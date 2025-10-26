@@ -24,7 +24,12 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Dynamic UX MVP API built with NestJS and MongoDB.
+
+- API reference: `docs/api.md`
+- Modules overview: `docs/modules.md`
+- Setup guide: `docs/setup.md`
+- Swagger UI: visit `http://localhost:8081/api` when the server is running.
 
 ## Installation
 

@@ -6,6 +6,7 @@ import { User } from '../../user/entities/user.entity';
 import { Contract } from '../../contract/entities/contract.entity';
 import { Event } from '../../event/entities/event.entity';
 import { ConfigService } from '@nestjs/config';
+import { UserContract } from '../../user-contract/entities/user-contract.entity';
 
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -16,6 +17,7 @@ export class SeedService implements OnApplicationBootstrap {
     @InjectModel(Contract.name) private readonly contractModel: Model<Contract>,
     @InjectModel(Event.name) private readonly eventModel: Model<Event>,
     private readonly config: ConfigService,
+    @InjectModel(UserContract.name) private readonly userContractModel: Model<UserContract>,
   ) {}
 
   async onApplicationBootstrap() {
@@ -70,6 +72,19 @@ export class SeedService implements OnApplicationBootstrap {
       });
       await contract.save();
       this.logger.log('Seeded default contract v1.0.0');
+    }
+
+    // Seed a personalized user contract
+    const existingUserContract = await this.userContractModel.findOne({ userId: user._id, contractId: contract._id });
+    if (!existingUserContract) {
+      await this.userContractModel.create({
+        userId: user._id as MongooseTypes.ObjectId,
+        contractId: contract._id as MongooseTypes.ObjectId,
+        json: {
+          screens: [{ id: 'home', components: [{ id: 'button1', type: 'button', label: 'Click Me!' }] }],
+        },
+      });
+      this.logger.log('Seeded personalized user contract');
     }
 
     const existingEvents = await this.eventModel.countDocuments({ userId: user._id });

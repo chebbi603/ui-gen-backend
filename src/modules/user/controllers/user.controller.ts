@@ -7,15 +7,26 @@ import {
   Delete,
   UseGuards,
   SetMetadata,
+  Request,
 } from '@nestjs/common';
 import { UserService } from '../services/user.service';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../../auth/guards/role-auth.guard';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-@Controller('user')
+@ApiTags('users')
+@ApiBearerAuth('accessToken')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  @ApiResponse({ status: 200, description: 'Current user info.' })
+  me(@Request() req: any) {
+    return this.userService.findOne(req.user.userId);
+  }
 
   @SetMetadata('roles', ['ADMIN'])
   @UseGuards(JwtAuthGuard, RoleGuard)
@@ -24,7 +35,8 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SetMetadata('roles', ['ADMIN'])
+  @UseGuards(JwtAuthGuard, RoleGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);

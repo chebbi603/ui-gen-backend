@@ -19,4 +19,11 @@ describe('AppController', () => {
       expect(appController.getHello()).toBe('Hello World!');
     });
   });
+
+  describe('ping', () => {
+    it('should return { status: "ok" }', () => {
+      const appController = new AppController(new AppService());
+      expect(appController.ping()).toEqual({ status: 'ok' });
+    });
+  });
 });
