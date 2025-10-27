@@ -18,7 +18,7 @@ Swagger: `http://localhost:8081/api`
   - `AppService` — trivial helper.
   - `SeedService` — seeding initial data/contracts.
 - Integrations:
-  - Imports: `UserModule`, `AuthModule`, `ContractModule`, `UserContractModule`, `EventModule`, `SessionModule`, `MongooseModule`, `ConfigModule`.
+  - Imports: `UserModule`, `AuthModule`, `ContractModule`, `UserContractModule`, `EventModule`, `LlmModule`, `MongooseModule`, `ConfigModule`.
   - Global error filter: Canonical error envelope (`error.code`, `error.message`, `error.details`, `requestId`).
 
 ---
@@ -66,10 +66,14 @@ Swagger: `http://localhost:8081/api`
 - Controllers:
   - `ContractController` (JWT)
     - `POST /contracts` — stores a validated canonical contract.
-      - Body: `{ version: "1.0.0", json: { /* canonical contract */ }, meta?: { /* metadata */ } }`
+      - Request DTO: `CreateContractDto`
+      - Response DTO: `ContractDto`
     - `GET /contracts/:id` — retrieve contract by id.
+      - Response DTO: `ContractDto`
 - Services:
   - `ContractService` — validation and persistence logic.
+- DTOs:
+  - `CreateContractDto`, `ContractDto`
 - Entities:
   - `Contract` — Mongoose schema.
 - Notes: Contract JSON validation is enforced before persistence.
@@ -82,10 +86,15 @@ Swagger: `http://localhost:8081/api`
 - Controllers:
   - `UserContractController` (JWT)
     - `GET /contracts/user/:userId` — get a user’s personalized contract.
+      - Response DTO: `UserPersonalizedContractDto`
     - `POST /contracts/user/:userId` — upsert personalized contract.
+      - Request DTO: `UpsertUserContractDto`
+      - Response DTO: `UserPersonalizedContractDto`
       - Only the user or ADMIN may write.
 - Services:
   - `UserContractService` — upsert/retrieval logic with role/ownership checks.
+- DTOs:
+  - `UpsertUserContractDto`, `UserPersonalizedContractDto`
 - Entities:
   - `UserContract` — Mongoose schema linking `userId` to contract JSON.
 
@@ -97,21 +106,52 @@ Swagger: `http://localhost:8081/api`
 - Controllers:
   - `EventController` (JWT)
     - `POST /events` — ingest event batch for authenticated user.
-      - Body: `{ events: [{ timestamp, componentId, eventType, data? }, ...] }`
-      - Response: `{ inserted: <count> }`.
+      - Request DTO: `CreateEventsBatchDto`
+      - Response DTO: `InsertedCountDto`.
+    - `POST /events/tracking-event` — ingest a single tracking event for authenticated user.
+      - Request DTO: `EventDto`
+      - Response DTO: `InsertedCountDto`.
     - `GET /events/user/:userId` — list events by user; requires ownership or ADMIN.
+      - Response DTO: `TrackingEventDto[]`
 - Services:
   - `EventService` — batch create and query by user.
 - DTOs:
-  - `CreateEventsBatchDto` — validates `{ events: [...] }` payload.
+  - `CreateEventsBatchDto`, `EventDto`, `InsertedCountDto`, `TrackingEventDto`
 - Entities:
   - `Event` — Mongoose schema.
 
 ---
 
+## LLM Module
+
+- Purpose: Generate optimized contracts leveraging event analytics.
+- Controllers:
+  - `LlmController` (JWT)
+    - `POST /llm/generate-contract` — generates and persists an optimized contract.
+      - Request DTO: `GenerateContractRequestDto`
+      - Response DTO: `ContractDto`
+- Services:
+  - `LlmService` — synthesizes optimized contract using `EventService` and `ContractService`.
+- Dependencies:
+  - Imports `ContractModule` and `EventModule`.
+
+---
+
 ## Session Module
 
-- Purpose: Provide Mongoose integration for `Session` entity (e.g., refresh tokens or server-side sessions if used).
+- Purpose: Track user sessions for behavioral analytics, pain point detection, and personalization.
+- Controllers:
+  - `SessionController` (JWT)
+    - `POST /sessions/start` — start a session for the authenticated user.
+    - `POST /sessions/:id/end` — end a session; owner or ADMIN only.
+    - `GET /sessions/user/:userId` — list sessions for a user; owner or ADMIN.
+    - `GET /sessions/:id` — fetch a session with its events; owner or ADMIN.
+- Services:
+  - `SessionService` — start/end sessions, list and fetch with permission checks.
+- DTOs:
+  - `CreateSessionDto`, `SessionDto`, `SessionWithEventsDto`
+- Entities:
+  - `Session` — Mongoose schema with `userId`, `startedAt`, `endedAt`, `deviceInfo`, `contractVersion`.
 - Contents:
   - `SessionModule` — registers `{ name: Session.name, schema: SessionSchema }` and exports `MongooseModule`.
   - `entities/session.entity.ts` — the schema definition.

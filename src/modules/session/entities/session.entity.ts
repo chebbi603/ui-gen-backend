@@ -9,8 +9,17 @@ export class Session extends Document {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
   userId: MongooseSchema.Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.Mixed })
-  deviceInfo: any;
+  @Prop({ type: Date, default: Date.now })
+  startedAt: Date;
+
+  @Prop({ type: Date })
+  endedAt?: Date;
+
+  @Prop({ type: String })
+  deviceInfo?: string;
+
+  @Prop({ type: String, required: true })
+  contractVersion: string;
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);

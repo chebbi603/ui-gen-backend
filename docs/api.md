@@ -40,9 +40,23 @@ Notes:
 
 - `GET /users` (JWT + ADMIN)
   - Returns all users.
+  - Response DTO: `UserSummaryDto[]`
 
 - `GET /users/:id` (JWT + ADMIN)
   - Returns a user by id.
+
+- `GET /users/:id/contract` (JWT)
+  - Returns the latest canonical contract bound to the user.
+  - Response DTO: `ContractDto`
+
+- `POST /users/:id/contract` (JWT + ADMIN)
+  - Creates/updates the user’s latest contract.
+  - Request DTO: `UpdateUserContractDto`
+  - Response DTO: `ContractDto`
+
+- `GET /users/:id/tracking-events` (JWT)
+  - Lists tracking events for a user; only owner or ADMIN can read.
+  - Response DTO: `TrackingEventDto[]`
 
 - `PATCH /users/:id` (JWT)
   - Updates fields of a user.
@@ -56,18 +70,12 @@ Notes:
 
 - `POST /contracts` (JWT)
   - Stores a canonical contract after validation.
-  - Body:
-    ```json
-    {
-      "version": "1.0.0",
-      "json": { /* full canonical contract JSON */ },
-      "meta": { "name": "Default App Contract" }
-    }
-    ```
-  - Response: Contract document JSON.
+  - Request DTO: `CreateContractDto`
+  - Response DTO: `ContractDto`
 
 - `GET /contracts/:id` (JWT)
   - Returns a contract by id.
+  - Response DTO: `ContractDto`
 
 ---
 
@@ -75,17 +83,12 @@ Notes:
 
 - `GET /contracts/user/:userId` (JWT)
   - Returns the personalized contract for a user.
-  - Response: `{ "json": { /* contract JSON */ } }`
+  - Response DTO: `UserPersonalizedContractDto`
 
 - `POST /contracts/user/:userId` (JWT)
   - Upserts a personalized contract. Only the user or ADMIN may write.
-  - Body:
-    ```json
-    {
-      "contractId": "<optional id>",
-      "json": { /* full canonical contract JSON */ }
-    }
-    ```
+  - Request DTO: `UpsertUserContractDto`
+  - Response DTO: `UserPersonalizedContractDto`
 
 ---
 
@@ -93,18 +96,26 @@ Notes:
 
 - `POST /events` (JWT)
   - Inserts a batch of events attributed to the current JWT user.
-  - Body:
-    ```json
-    {
-      "events": [
-        { "timestamp": "2025-10-26T00:00:00.000Z", "componentId": "home", "eventType": "view", "data": { "page": "home" } }
-      ]
-    }
-    ```
-  - Response: `{ "inserted": <count> }`
+  - Request DTO: `CreateEventsBatchDto`
+  - Response DTO: `InsertedCountDto`
+
+- `POST /events/tracking-event` (JWT)
+  - Inserts a single tracking event for the current JWT user.
+  - Request DTO: `EventDto`
+  - Response DTO: `InsertedCountDto`
 
 - `GET /events/user/:userId` (JWT)
   - Lists events for a specific user. Only the user or ADMIN may read.
+  - Response DTO: `TrackingEventDto[]`
+
+---
+
+## LLM
+
+- `POST /llm/generate-contract` (JWT)
+  - Generates and persists an optimized contract using user analytics and optional base contract.
+  - Request DTO: `GenerateContractRequestDto`
+  - Response DTO: `ContractDto`
 
 ---
 
@@ -127,6 +138,31 @@ Common statuses:
 - 401: Missing/invalid JWT
 - 403: Unauthorized action (role or ownership)
 - 404: Resource not found
+
+---
+
+## Sessions
+
+- `POST /sessions/start` (JWT)
+  - Starts a session for the authenticated user.
+  - Request DTO: `CreateSessionDto`
+  - Response DTO: `SessionDto`
+
+- `POST /sessions/:id/end` (JWT)
+  - Ends a session; only owner or ADMIN can end.
+  - Response DTO: `SessionDto`
+
+- `GET /sessions/user/:userId` (JWT)
+  - Lists sessions for a user; only owner or ADMIN.
+  - Response DTO: `SessionDto[]`
+
+- `GET /sessions/:id` (JWT)
+  - Returns a session with its associated events.
+  - Response DTO: `SessionWithEventsDto`
+
+Notes:
+- Events now accept optional `sessionId`, allowing analytics grouping by session.
+- Frontend may generate session IDs or rely on backend to manage session lifecycle.
 
 ---
 

@@ -17,12 +17,16 @@ export class SeedService implements OnApplicationBootstrap {
     @InjectModel(Contract.name) private readonly contractModel: Model<Contract>,
     @InjectModel(Event.name) private readonly eventModel: Model<Event>,
     private readonly config: ConfigService,
-    @InjectModel(UserContract.name) private readonly userContractModel: Model<UserContract>,
+    @InjectModel(UserContract.name)
+    private readonly userContractModel: Model<UserContract>,
   ) {}
 
   async onApplicationBootstrap() {
     try {
-      const env = this.config.get<string>('NODE_ENV') || process.env.NODE_ENV || 'development';
+      const env =
+        this.config.get<string>('NODE_ENV') ||
+        process.env.NODE_ENV ||
+        'development';
       const seedEnabled = this.config.get<string>('SEED_ENABLED') === 'true';
       if (env === 'production' && !seedEnabled) {
         this.logger.log('Seeding skipped (production or disabled)');
@@ -59,7 +63,9 @@ export class SeedService implements OnApplicationBootstrap {
     if (!contract) {
       contract = new this.contractModel({
         json: {
-          screens: [{ id: 'home', components: [{ id: 'button1', type: 'button' }] }],
+          screens: [
+            { id: 'home', components: [{ id: 'button1', type: 'button' }] },
+          ],
         },
         version: '1.0.0',
         meta: {
@@ -75,19 +81,31 @@ export class SeedService implements OnApplicationBootstrap {
     }
 
     // Seed a personalized user contract
-    const existingUserContract = await this.userContractModel.findOne({ userId: user._id, contractId: contract._id });
+    const existingUserContract = await this.userContractModel.findOne({
+      userId: user._id,
+      contractId: contract._id,
+    });
     if (!existingUserContract) {
       await this.userContractModel.create({
         userId: user._id as MongooseTypes.ObjectId,
         contractId: contract._id as MongooseTypes.ObjectId,
         json: {
-          screens: [{ id: 'home', components: [{ id: 'button1', type: 'button', label: 'Click Me!' }] }],
+          screens: [
+            {
+              id: 'home',
+              components: [
+                { id: 'button1', type: 'button', label: 'Click Me!' },
+              ],
+            },
+          ],
         },
       });
       this.logger.log('Seeded personalized user contract');
     }
 
-    const existingEvents = await this.eventModel.countDocuments({ userId: user._id });
+    const existingEvents = await this.eventModel.countDocuments({
+      userId: user._id,
+    });
     if (existingEvents < 2) {
       await this.eventModel.create([
         {

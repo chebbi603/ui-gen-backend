@@ -30,7 +30,12 @@ describe('AuthService (unit)', () => {
 
   describe('validateUser', () => {
     it('returns sanitized user when password matches', async () => {
-      const user: any = { _id: 'u1', email: 'a@b.c', password: 'hash', role: 'USER' };
+      const user: any = {
+        _id: 'u1',
+        email: 'a@b.c',
+        password: 'hash',
+        role: 'USER',
+      };
       mockUserService.findByEmail.mockResolvedValue({ ...user });
       (bcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
 
@@ -42,7 +47,11 @@ describe('AuthService (unit)', () => {
     });
 
     it('returns null when password mismatch or user missing', async () => {
-      mockUserService.findByEmail.mockResolvedValue({ _id: 'u1', email: 'x@y.z', password: 'hash' });
+      mockUserService.findByEmail.mockResolvedValue({
+        _id: 'u1',
+        email: 'x@y.z',
+        password: 'hash',
+      });
       (bcrypt.compare as unknown as jest.Mock).mockResolvedValue(false);
       const result1 = await service.validateUser('x@y.z', 'wrong');
       expect(result1).toBeNull();
@@ -57,8 +66,16 @@ describe('AuthService (unit)', () => {
     it('returns accessToken and role with id', async () => {
       const user: any = { _id: 'u1', id: 'u1', email: 'a@b.c', role: 'ADMIN' };
       const res = await service.login(user);
-      expect(res).toEqual({ _id: 'u1', role: 'ADMIN', accessToken: 'signed-token' });
-      expect(mockJwt.sign).toHaveBeenCalledWith({ email: 'a@b.c', sub: 'u1', role: 'ADMIN' });
+      expect(res).toEqual({
+        _id: 'u1',
+        role: 'ADMIN',
+        accessToken: 'signed-token',
+      });
+      expect(mockJwt.sign).toHaveBeenCalledWith({
+        email: 'a@b.c',
+        sub: 'u1',
+        role: 'ADMIN',
+      });
     });
   });
 

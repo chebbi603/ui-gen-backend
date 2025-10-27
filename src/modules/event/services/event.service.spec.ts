@@ -26,27 +26,56 @@ describe('EventService (unit)', () => {
   it('createBatch inserts transformed events and returns count', async () => {
     MockModel.insertMany.mockResolvedValue(undefined);
     const res = await service.createBatch('507f1f77bcf86cd799439011', [
-      { timestamp: new Date().toISOString(), componentId: 'c1', eventType: 'tap' },
-      { timestamp: new Date().toISOString(), componentId: 'c2', eventType: 'view', data: { x: 1 } },
+      {
+        timestamp: new Date().toISOString(),
+        componentId: 'c1',
+        eventType: 'tap',
+      },
+      {
+        timestamp: new Date().toISOString(),
+        componentId: 'c2',
+        eventType: 'view',
+        data: { x: 1 },
+      },
     ]);
     expect(MockModel.insertMany).toHaveBeenCalled();
     const args = MockModel.insertMany.mock.calls[0][0];
     expect(args).toHaveLength(2);
-    expect(args[0]).toEqual(expect.objectContaining({ componentId: 'c1', eventType: 'tap', data: {} }));
+    expect(args[0]).toEqual(
+      expect.objectContaining({
+        componentId: 'c1',
+        eventType: 'tap',
+        data: {},
+      }),
+    );
     expect(args[0].timestamp).toBeInstanceOf(Date);
     expect(res).toEqual({ inserted: 2 });
   });
 
   it('listByUser forbids non-owner non-admin', async () => {
-    await expect(service.listByUser('507f1f77bcf86cd799439011', 'USER', '507f1f77bcf86cd799439012')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.listByUser(
+        '507f1f77bcf86cd799439011',
+        'USER',
+        '507f1f77bcf86cd799439012',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('listByUser returns find() results for owner or admin', async () => {
     const sort = jest.fn().mockResolvedValue(['e1']);
     MockModel.find.mockReturnValue({ sort } as any);
-    const ownerRes = await service.listByUser('507f1f77bcf86cd799439011', 'USER', '507f1f77bcf86cd799439011');
+    const ownerRes = await service.listByUser(
+      '507f1f77bcf86cd799439011',
+      'USER',
+      '507f1f77bcf86cd799439011',
+    );
     expect(ownerRes).toEqual(['e1']);
-    const adminRes = await service.listByUser('507f1f77bcf86cd799439013', 'ADMIN', '507f1f77bcf86cd799439012');
+    const adminRes = await service.listByUser(
+      '507f1f77bcf86cd799439013',
+      'ADMIN',
+      '507f1f77bcf86cd799439012',
+    );
     expect(adminRes).toEqual(['e1']);
   });
 });

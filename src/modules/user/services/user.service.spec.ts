@@ -37,9 +37,15 @@ describe('UserService (unit)', () => {
       (bcrypt.hash as unknown as jest.Mock).mockResolvedValue('hashed');
       MockModel.findOne.mockResolvedValue(null);
 
-      await service.create({ email: 'a@b.c', password: 'p', username: 'u' } as any);
+      await service.create({
+        email: 'a@b.c',
+        password: 'p',
+        username: 'u',
+      } as any);
 
-      expect(MockModel).toHaveBeenCalledWith(expect.objectContaining({ email: 'a@b.c', username: 'u' }));
+      expect(MockModel).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'a@b.c', username: 'u' }),
+      );
       const instance = (MockModel as jest.Mock).mock.instances[0];
       expect(instance.password).toBe('hashed');
       expect(instance.role).toBe('USER');
@@ -48,7 +54,13 @@ describe('UserService (unit)', () => {
 
     it('throws conflict when email exists', async () => {
       MockModel.findOne.mockResolvedValue({ _id: 'existing' });
-      await expect(service.create({ email: 'dup@b.c', password: 'p', username: 'u' } as any)).rejects.toThrow();
+      await expect(
+        service.create({
+          email: 'dup@b.c',
+          password: 'p',
+          username: 'u',
+        } as any),
+      ).rejects.toThrow();
     });
   });
 
@@ -76,9 +88,17 @@ describe('UserService (unit)', () => {
 
   describe('update', () => {
     it('updates allowed fields and calls save', async () => {
-      const user: any = { username: 'old', email: 'old@b.c', role: 'USER', save: jest.fn() };
+      const user: any = {
+        username: 'old',
+        email: 'old@b.c',
+        role: 'USER',
+        save: jest.fn(),
+      };
       MockModel.findById.mockResolvedValue(user);
-      await service.update('507f1f77bcf86cd799439011', { email: 'new@b.c', role: 'ADMIN' } as any);
+      await service.update('507f1f77bcf86cd799439011', {
+        email: 'new@b.c',
+        role: 'ADMIN',
+      } as any);
       expect(user.email).toBe('new@b.c');
       expect(user.role).toBe('USER');
       expect(user.save).toHaveBeenCalled();

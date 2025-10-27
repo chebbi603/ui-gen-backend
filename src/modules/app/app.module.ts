@@ -14,7 +14,11 @@ import { SeedService } from './services/seed.service';
 import { User, UserSchema } from '../user/entities/user.entity';
 import { Contract, ContractSchema } from '../contract/entities/contract.entity';
 import { Event, EventSchema } from '../event/entities/event.entity';
-import { UserContract, UserContractSchema } from '../user-contract/entities/user-contract.entity';
+import {
+  UserContract,
+  UserContractSchema,
+} from '../user-contract/entities/user-contract.entity';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
@@ -27,6 +31,7 @@ import { UserContract, UserContractSchema } from '../user-contract/entities/user
     UserContractModule,
     EventModule,
     SessionModule,
+    LlmModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

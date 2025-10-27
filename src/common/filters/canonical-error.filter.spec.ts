@@ -25,7 +25,10 @@ describe('CanonicalErrorFilter', () => {
 
   it('formats HttpException with object response and includes requestId', () => {
     const { host, res } = createHost({ 'x-request-id': 'req-123' });
-    const exception = new HttpException({ message: 'Bad', code: 'BAD', details: { reason: 'x' } }, HttpStatus.BAD_REQUEST);
+    const exception = new HttpException(
+      { message: 'Bad', code: 'BAD', details: { reason: 'x' } },
+      HttpStatus.BAD_REQUEST,
+    );
 
     filter.catch(exception, host);
 

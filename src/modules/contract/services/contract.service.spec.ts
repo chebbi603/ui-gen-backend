@@ -32,8 +32,16 @@ describe('ContractService (unit)', () => {
   });
 
   it('create validates json and version, then saves', async () => {
-    (validateContractJson as jest.Mock).mockReturnValue({ valid: true, errors: [] });
-    const res = await service.create({ screen: [] }, '1.0.0', { name: 'abc' }, '507f1f77bcf86cd799439011');
+    (validateContractJson as jest.Mock).mockReturnValue({
+      valid: true,
+      errors: [],
+    });
+    await service.create(
+      { screen: [] },
+      '1.0.0',
+      { name: 'abc' },
+      '507f1f77bcf86cd799439011',
+    );
     const instance = (MockModel as jest.Mock).mock.instances[0];
     expect(instance.save).toHaveBeenCalled();
     expect(instance.version).toBe('1.0.0');
@@ -42,19 +50,31 @@ describe('ContractService (unit)', () => {
   });
 
   it('create throws BadRequestException for invalid json', async () => {
-    (validateContractJson as jest.Mock).mockReturnValue({ valid: false, errors: ['bad'] });
-    await expect(service.create({}, '1.0.0', {}, '507f1f77bcf86cd799439011')).rejects.toBeInstanceOf(BadRequestException);
+    (validateContractJson as jest.Mock).mockReturnValue({
+      valid: false,
+      errors: ['bad'],
+    });
+    await expect(
+      service.create({}, '1.0.0', {}, '507f1f77bcf86cd799439011'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('create throws BadRequestException for invalid version', async () => {
-    (validateContractJson as jest.Mock).mockReturnValue({ valid: true, errors: [] });
-    await expect(service.create({}, 'v1', {}, '507f1f77bcf86cd799439011')).rejects.toBeInstanceOf(BadRequestException);
+    (validateContractJson as jest.Mock).mockReturnValue({
+      valid: true,
+      errors: [],
+    });
+    await expect(
+      service.create({}, 'v1', {}, '507f1f77bcf86cd799439011'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('findById returns doc or throws NotFound', async () => {
     const oid = '507f1f77bcf86cd799439011';
     MockModel.findById.mockResolvedValue(null);
-    await expect(service.findById(oid)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.findById(oid)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     MockModel.findById.mockResolvedValue({ _id: oid });
     expect(await service.findById(oid)).toEqual({ _id: oid });
   });

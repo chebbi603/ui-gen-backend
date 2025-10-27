@@ -6,10 +6,12 @@ describe('RoleGuard', () => {
   const reflector = { get: jest.fn() } as unknown as Reflector;
   const guard = new RoleGuard(reflector);
 
-  const makeContext = (userRole: string): ExecutionContext => ({
-    switchToHttp: () => ({ getRequest: () => ({ user: { role: userRole } }) } as any),
-    getHandler: () => ({} as any),
-  } as any);
+  const makeContext = (userRole: string): ExecutionContext =>
+    ({
+      switchToHttp: () =>
+        ({ getRequest: () => ({ user: { role: userRole } }) } as any),
+      getHandler: () => ({} as any),
+    } as any);
 
   beforeEach(() => {
     (reflector.get as any).mockReset();

@@ -40,20 +40,46 @@ describe('UserContractService (unit)', () => {
   it('upsertUserContract denies when requester is not owner nor admin', async () => {
     (validateContractJson as jest.Mock).mockReturnValue({ valid: true });
     await expect(
-      service.upsertUserContract('507f1f77bcf86cd799439011', undefined, { a: 1 }, '507f1f77bcf86cd799439012', 'USER'),
+      service.upsertUserContract(
+        '507f1f77bcf86cd799439011',
+        undefined,
+        { a: 1 },
+        '507f1f77bcf86cd799439012',
+        'USER',
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('upsertUserContract validates json and upserts when allowed', async () => {
     (validateContractJson as jest.Mock).mockReturnValue({ valid: true });
-    MockModel.findOneAndUpdate.mockResolvedValue({ _id: 'x', json: { ok: true } });
-    const res = await service.upsertUserContract('507f1f77bcf86cd799439011', undefined, { screens: [] }, '507f1f77bcf86cd799439011', 'USER');
+    MockModel.findOneAndUpdate.mockResolvedValue({
+      _id: 'x',
+      json: { ok: true },
+    });
+    const res = await service.upsertUserContract(
+      '507f1f77bcf86cd799439011',
+      undefined,
+      { screens: [] },
+      '507f1f77bcf86cd799439011',
+      'USER',
+    );
     expect(MockModel.findOneAndUpdate).toHaveBeenCalled();
     expect(res).toEqual({ _id: 'x', json: { ok: true } });
   });
 
   it('upsertUserContract rejects invalid json', async () => {
-    (validateContractJson as jest.Mock).mockReturnValue({ valid: false, errors: ['bad'] });
-    await expect(service.upsertUserContract('507f1f77bcf86cd799439011', undefined, {}, '507f1f77bcf86cd799439011', 'ADMIN')).rejects.toBeInstanceOf(BadRequestException);
+    (validateContractJson as jest.Mock).mockReturnValue({
+      valid: false,
+      errors: ['bad'],
+    });
+    await expect(
+      service.upsertUserContract(
+        '507f1f77bcf86cd799439011',
+        undefined,
+        {},
+        '507f1f77bcf86cd799439011',
+        'ADMIN',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

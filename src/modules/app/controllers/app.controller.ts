@@ -1,5 +1,4 @@
-import { Controller, Get, Inject } from '@nestjs/common';
-import { ClientProxy, EventPattern } from '@nestjs/microservices';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from '../services/app.service';
 
 @Controller()

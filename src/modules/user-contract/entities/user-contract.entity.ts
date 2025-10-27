@@ -10,7 +10,11 @@ export class UserContract extends Document {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
   userId: MongooseSchema.Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Contract.name, required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Contract.name,
+    required: true,
+  })
   contractId: MongooseSchema.Types.ObjectId;
 
   @Prop({ type: MongooseSchema.Types.Mixed })

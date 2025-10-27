@@ -21,6 +21,8 @@ describe('LocalStrategy', () => {
 
   it('throws UnauthorizedException when invalid', async () => {
     mockAuth.validateUser.mockResolvedValue(null);
-    await expect(strategy.validate('a@b.c', 'bad')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(strategy.validate('a@b.c', 'bad')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });
