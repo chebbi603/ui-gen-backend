@@ -36,6 +36,7 @@ export class SessionController {
       req.user.userId,
       body.contractVersion,
       body.deviceInfo,
+      (body as any).platform,
     );
     return {
       id: doc._id.toString(),
@@ -44,6 +45,7 @@ export class SessionController {
       endedAt: doc.endedAt ? doc.endedAt.toISOString() : undefined,
       deviceInfo: doc.deviceInfo,
       contractVersion: doc.contractVersion,
+      platform: (doc as any).platform,
     };
   }
 
@@ -62,6 +64,7 @@ export class SessionController {
       endedAt: doc.endedAt ? doc.endedAt.toISOString() : undefined,
       deviceInfo: doc.deviceInfo,
       contractVersion: doc.contractVersion,
+      platform: (doc as any).platform,
     };
   }
 
@@ -88,6 +91,7 @@ export class SessionController {
       endedAt: doc.endedAt ? doc.endedAt.toISOString() : undefined,
       deviceInfo: doc.deviceInfo,
       contractVersion: doc.contractVersion,
+      platform: (doc as any).platform,
     }));
   }
 
@@ -113,6 +117,7 @@ export class SessionController {
       endedAt: doc.endedAt ? doc.endedAt.toISOString() : undefined,
       deviceInfo: doc.deviceInfo,
       contractVersion: doc.contractVersion,
+      platform: (doc as any).platform,
       events: events.map((e: any) => ({
         id: e._id.toString(),
         userId: e.userId.toString(),

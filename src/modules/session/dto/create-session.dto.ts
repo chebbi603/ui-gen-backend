@@ -10,4 +10,9 @@ export class CreateSessionDto {
   @IsString()
   @IsOptional()
   deviceInfo?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  platform?: string;
 }

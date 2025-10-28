@@ -20,6 +20,11 @@ export class Session extends Document {
 
   @Prop({ type: String, required: true })
   contractVersion: string;
+
+  @Prop({ type: String })
+  platform?: string;
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);
+// Compound indexes for listing and lookups
+SessionSchema.index({ userId: 1, startedAt: 1 });

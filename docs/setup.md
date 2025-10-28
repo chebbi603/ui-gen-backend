@@ -10,8 +10,21 @@ Copy `.env.example` to `.env` and set:
 - `PORT=8081` (optional; defaults from server config)
 - `MONGO_URL` (e.g., `mongodb://localhost:27017`)
 - `MONGO_DATABASE_NAME` (e.g., `blog`)
-- `JWT_SECRET` (required; strong random string)
+- `JWT_SECRET` (required in production; strong random string)
 - `SEED_ENABLED=true` (optional; enables dev seeding)
+
+Optional:
+- `RABBITMQ_URL`, `RABBITMQ_TOPIC`
+- `JWT_EXPIRES_IN` (e.g., `1h`, `7d`)
+- `REDIS_URL` or (`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB`)
+- `LLM_PROVIDER` (`openai` or `anthropic`)
+- `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`
+- `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_BASE_URL`
+
+Startup validation:
+- The app validates env vars on boot and fails fast with clear messages when required values are missing.
+- In development, a strong random JWT secret is generated if `JWT_SECRET` is absent.
+- In production, missing required vars (e.g., `JWT_SECRET`, provider API keys) prevent startup.
 
 ## Running
 

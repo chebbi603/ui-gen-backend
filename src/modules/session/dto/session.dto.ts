@@ -18,4 +18,7 @@ export class SessionDto {
 
   @ApiProperty()
   contractVersion: string;
+
+  @ApiProperty({ required: false })
+  platform?: string;
 }

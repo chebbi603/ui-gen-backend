@@ -33,7 +33,7 @@ describe('AuthService (unit)', () => {
       const user: any = {
         _id: 'u1',
         email: 'a@b.c',
-        password: 'hash',
+        passwordHash: 'hash',
         role: 'USER',
       };
       mockUserService.findByEmail.mockResolvedValue({ ...user });
@@ -42,7 +42,7 @@ describe('AuthService (unit)', () => {
       const result = await service.validateUser('a@b.c', 'password');
       expect(result).toBeDefined();
       expect(result._id).toBe('u1');
-      expect((result as any).password).toBeUndefined();
+      expect((result as any).passwordHash).toBeUndefined();
       expect(mockUserService.findByEmail).toHaveBeenCalledWith('a@b.c');
     });
 
@@ -50,7 +50,7 @@ describe('AuthService (unit)', () => {
       mockUserService.findByEmail.mockResolvedValue({
         _id: 'u1',
         email: 'x@y.z',
-        password: 'hash',
+        passwordHash: 'hash',
       });
       (bcrypt.compare as unknown as jest.Mock).mockResolvedValue(false);
       const result1 = await service.validateUser('x@y.z', 'wrong');

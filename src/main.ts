@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './modules/app/app.module';
@@ -10,6 +11,11 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   app.enableCors();
   app.useGlobalFilters(new CanonicalErrorFilter());
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('UI Customisation Api')

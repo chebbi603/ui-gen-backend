@@ -34,3 +34,5 @@ export class Event extends Document {
 }
 
 export const EventSchema = SchemaFactory.createForClass(Event);
+// Compound indexes for efficient queries by user/session/timestamp
+EventSchema.index({ userId: 1, sessionId: 1, timestamp: 1 });

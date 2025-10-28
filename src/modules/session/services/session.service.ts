@@ -15,12 +15,18 @@ export class SessionService {
     private readonly eventService: EventService,
   ) {}
 
-  async start(userId: string, contractVersion: string, deviceInfo?: string) {
+  async start(
+    userId: string,
+    contractVersion: string,
+    deviceInfo?: string,
+    platform?: string,
+  ) {
     const doc = await this.sessionModel.create({
       userId: new MongooseTypes.ObjectId(userId),
       startedAt: new Date(),
       deviceInfo,
       contractVersion,
+      platform,
     });
     return doc;
   }

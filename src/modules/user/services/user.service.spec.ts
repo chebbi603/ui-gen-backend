@@ -47,7 +47,7 @@ describe('UserService (unit)', () => {
         expect.objectContaining({ email: 'a@b.c', username: 'u' }),
       );
       const instance = (MockModel as jest.Mock).mock.instances[0];
-      expect(instance.password).toBe('hashed');
+      expect(instance.passwordHash).toBe('hashed');
       expect(instance.role).toBe('USER');
       expect(instance.save).toHaveBeenCalled();
     });

@@ -51,7 +51,6 @@ export class SeedService implements OnApplicationBootstrap {
         email,
         username: 'TestUser',
         name: 'Test User',
-        password: passwordHash,
         passwordHash,
         role: 'USER',
       });

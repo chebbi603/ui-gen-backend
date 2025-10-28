@@ -13,10 +13,10 @@ export class User extends Document {
   email: string;
 
   @Prop({ required: true })
-  password: string;
-
-  @Prop({ required: true })
   passwordHash: string;
+
+  @Prop({ type: [String], default: [] })
+  refreshTokens: string[];
 
   @Prop({ required: true })
   role: string;
@@ -29,7 +29,7 @@ UserSchema.set('toJSON', {
   versionKey: false,
   transform: (_doc, ret) => {
     delete ret.passwordHash;
-    delete ret.password;
+    delete ret.refreshTokens;
     return ret;
   },
 });

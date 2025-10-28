@@ -27,7 +27,6 @@ export class UserService {
       const passwordHash = await bcrypt.hash(createUserDto.password, salt);
       user = new this.userModel({
         ...createUserDto,
-        password: passwordHash,
         passwordHash,
         role: 'USER',
       });
@@ -91,6 +90,47 @@ export class UserService {
   async remove(id: string) {
     try {
       await this.userModel.findByIdAndDelete(new MongooseTypes.ObjectId(id));
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async addRefreshToken(userId: string, tokenHash: string) {
+    try {
+      const user = await this.userModel.findById(new MongooseTypes.ObjectId(userId));
+      if (!user) {
+        throw new NotFoundException('user does not exists');
+      }
+      if (!user.refreshTokens.includes(tokenHash)) {
+        user.refreshTokens.push(tokenHash);
+        await user.save();
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async removeRefreshToken(userId: string, tokenHash: string) {
+    try {
+      const user = await this.userModel.findById(new MongooseTypes.ObjectId(userId));
+      if (!user) {
+        throw new NotFoundException('user does not exists');
+      }
+      user.refreshTokens = user.refreshTokens.filter((h) => h !== tokenHash);
+      await user.save();
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async clearRefreshTokens(userId: string) {
+    try {
+      const user = await this.userModel.findById(new MongooseTypes.ObjectId(userId));
+      if (!user) {
+        throw new NotFoundException('user does not exists');
+      }
+      user.refreshTokens = [];
+      await user.save();
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
