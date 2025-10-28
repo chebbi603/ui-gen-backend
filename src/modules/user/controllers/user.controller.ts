@@ -45,8 +45,6 @@ export class UserController {
     return this.userService.findOne(req.user.userId);
   }
 
-  @SetMetadata('roles', ['ADMIN'])
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @Get()
   @ApiResponse({
     status: 200,
@@ -55,7 +53,7 @@ export class UserController {
     isArray: true,
   })
   async findAll(): Promise<UserDTO[]> {
-    const q = await (this.userService.findAll() as any).exec();
+    const q = await this.userService.findAll();
     const res: UserDTO[] = [];
     for (const u of q) {
       const lastEvent = await this.eventService.getLastForUser(
@@ -67,7 +65,7 @@ export class UserController {
       res.push({
         id: u._id.toString(),
         name: u.name,
-        lastActive: (lastEvent ?? u.updatedAt)?.toISOString(),
+        lastActive: (lastEvent ?? (u as any).updatedAt)?.toISOString(),
         contractVersion: latestContract?.version ?? '',
       });
     }

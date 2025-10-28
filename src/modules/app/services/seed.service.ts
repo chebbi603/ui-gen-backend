@@ -52,10 +52,17 @@ export class SeedService implements OnApplicationBootstrap {
         username: 'TestUser',
         name: 'Test User',
         passwordHash,
-        role: 'USER',
+        role: 'ADMIN',
       });
       await user.save();
       this.logger.log(`Seeded user ${email}`);
+    } else {
+      // Ensure the seeded user has ADMIN role for dashboard access
+      if ((user as any).role !== 'ADMIN') {
+        (user as any).role = 'ADMIN';
+        await user.save();
+        this.logger.log(`Updated user ${email} to ADMIN`);
+      }
     }
 
     let contract = await this.contractModel.findOne({ version: '1.0.0' });

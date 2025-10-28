@@ -39,7 +39,7 @@ export class UserService {
 
   async findAll() {
     try {
-      const users = this.userModel.find({});
+      const users = await this.userModel.find({}).exec();
       return users;
     } catch (error) {
       console.log(error);
