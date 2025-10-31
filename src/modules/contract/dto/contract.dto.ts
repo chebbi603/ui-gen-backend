@@ -1,6 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ContractDto {
+  @ApiProperty({ description: 'Contract id' })
+  id: string;
+
   @ApiProperty()
   userId: string;
 
@@ -19,4 +22,7 @@ export class ContractDto {
 
   @ApiProperty({ description: 'ISO timestamp' })
   updatedAt: string;
+
+  @ApiProperty({ type: 'object', required: false, additionalProperties: true })
+  meta?: Record<string, unknown>;
 }

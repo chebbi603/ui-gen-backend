@@ -41,11 +41,13 @@ export class LlmController {
     const createdAt = (doc as any).createdAt as Date | undefined;
     const updatedAt = (doc as any).updatedAt as Date | undefined;
     return {
+      id: (doc as any)._id?.toString?.() || '',
       userId,
-      version: doc.version,
-      json: doc.json as Record<string, unknown>,
+      version: (doc as any).version,
+      json: (doc as any).json as Record<string, unknown>,
       createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),
       updatedAt: updatedAt ? updatedAt.toISOString() : new Date().toISOString(),
+      meta: (doc as any).meta ?? {},
     };
   }
 }

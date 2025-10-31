@@ -9,6 +9,9 @@ import {
   SetMetadata,
   Request,
   Post,
+  Header,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UserService } from '../services/user.service';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -23,6 +26,7 @@ import { ContractDto } from '../../contract/dto/contract.dto';
 import { UpdateUserContractDto } from '../dto/update-user-contract.dto';
 import { TrackingEventDto } from '../../event/dto/tracking-event.dto';
 import { UserSummaryDto } from '../dto/user-summary.dto';
+import { CacheService } from '../../../common/services/cache.service';
 
 @ApiTags('users')
 @ApiBearerAuth('accessToken')
@@ -32,6 +36,7 @@ export class UserController {
     private readonly userService: UserService,
     private readonly contractService: ContractService,
     private readonly eventService: EventService,
+    private readonly cache: CacheService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -82,23 +87,48 @@ export class UserController {
   // Dashboard & Flutter: GET /users/{id}/contract
   @UseGuards(JwtAuthGuard)
   @Get(':id/contract')
+  @Header('Cache-Control', 'private, max-age=300')
   @ApiResponse({
     status: 200,
     description: 'Latest user contract.',
     type: ContractDto,
   })
-  async getUserContract(@Param('id') id: string): Promise<ContractDTO | null> {
-    const doc = await this.contractService.findLatestByUser(id);
+  async getUserContract(
+    @Param('id') id: string,
+    @Request() req: any,
+  ): Promise<ContractDTO | null> {
+    // Auth: user must match or be admin
+    if (req.user?.userId !== id && req.user?.role !== 'ADMIN') {
+      throw new ForbiddenException('Cannot access another user contract');
+    }
+    // Ensure user exists
+    const user = await this.userService.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    // Try cache first
+    const cacheKey = `contracts:user:${id}`;
+    const cached = await this.cache.get<ContractDTO>(cacheKey);
+    if (cached) return cached;
+
+    // Latest personalized; fallback to canonical
+    const doc = (await this.contractService.findLatestByUser(id))
+      || (await this.contractService.findLatestCanonical());
     if (!doc) return null;
     const createdAt = (doc as any).createdAt as Date | undefined;
     const updatedAt = (doc as any).updatedAt as Date | undefined;
-    return {
-      userId: doc.userId?.toString() || id,
-      version: doc.version,
-      json: doc.json as Record<string, unknown>,
+    const res: ContractDTO = {
+      id: (doc as any)._id?.toString?.() || '',
+      userId: id,
+      version: (doc as any).version,
+      json: (doc as any).json as Record<string, unknown>,
       createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),
       updatedAt: updatedAt ? updatedAt.toISOString() : new Date().toISOString(),
+      meta: (doc as any).meta ?? {},
     };
+    // Save to cache
+    await this.cache.set(cacheKey, res, 300);
+    return res;
   }
 
   // Dashboard: POST /users/{id}/contract
@@ -126,13 +156,18 @@ export class UserController {
     );
     const createdAt = (doc as any).createdAt as Date | undefined;
     const updatedAt = (doc as any).updatedAt as Date | undefined;
-    return {
+    const res: ContractDTO = {
+      id: (doc as any)._id?.toString?.() || '',
       userId: id,
-      version: doc.version,
-      json: doc.json as Record<string, unknown>,
+      version: (doc as any).version,
+      json: (doc as any).json as Record<string, unknown>,
       createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),
       updatedAt: updatedAt ? updatedAt.toISOString() : new Date().toISOString(),
+      meta: (doc as any).meta ?? {},
     };
+    // Invalidate cache for this user's contract if present
+    await this.cache.del(`contracts:user:${id}`);
+    return res;
   }
 
   // Dashboard: GET /users/{id}/tracking-events

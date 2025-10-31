@@ -51,7 +51,7 @@ Swagger: `http://localhost:8081/api`
     - `GET /users/me` (JWT) — current user profile.
     - `GET /users` (JWT) — list all users.
     - `GET /users/:id` (JWT + ADMIN) — fetch user by id.
-    - `GET /users/:id/contract` (JWT) — latest canonical contract bound to the user.
+    - `GET /users/:id/contract` (JWT) — latest personalized contract for the user; falls back to canonical when none exists; cached for 5 minutes when Redis is configured.
     - `POST /users/:id/contract` (JWT + ADMIN) — create/update user’s latest contract.
     - `PATCH /users/:id` (JWT) — update user fields.
     - `DELETE /users/:id` (JWT + ADMIN) — delete a user.
@@ -64,7 +64,7 @@ Swagger: `http://localhost:8081/api`
 
 ## Contract Module
 
-- Purpose: Store and retrieve canonical contracts.
+- Purpose: Store and retrieve canonical contracts; expose public canonical read and admin history.
 - Controllers:
   - `ContractController` (JWT)
     - `POST /contracts` — stores a validated canonical contract.
@@ -72,13 +72,24 @@ Swagger: `http://localhost:8081/api`
       - Response DTO: `ContractDto`
     - `GET /contracts/:id` — retrieve contract by id.
       - Response DTO: `ContractDto`
+  - `ContractPublicController` (Public)
+    - `GET /contracts/canonical` — latest canonical contract; cached for 5 minutes when Redis is configured.
+  - Admin endpoints:
+    - `GET /contracts/:id/history` — chronological history with simple JSON diffs.
 - Services:
-  - `ContractService` — validation and persistence logic.
+  - `ContractService` — validation and persistence logic; helpers:
+    - `findLatestCanonical()` — latest canonical (no `userId`).
+    - `findHistoryByContractId(id)` — history for same target as `id`.
 - DTOs:
   - `CreateContractDto`, `ContractDto`
 - Entities:
   - `Contract` — Mongoose schema.
 - Notes: Contract JSON validation is enforced before persistence.
+
+Caching
+- `CacheService` (conditional Redis) is used for canonical and user contract reads.
+- TTL is 300 seconds; cache keys: `contracts:canonical`, `contracts:user:{id}`.
+- If Redis is not configured or unavailable, endpoints still function without caching.
 
 ---
 
@@ -180,6 +191,8 @@ Swagger: `http://localhost:8081/api`
   - `CanonicalErrorFilter` — global exception filter returning standardized error envelope.
 - Validators:
   - `contract.validator.ts` — defines `ContractValidationResult` and supports contract validation routines.
+ - Caching:
+   - `common/services/cache.service.ts` — lightweight Redis client wrapper used by controllers; reads `redis.*` from `ConfigService` (`REDIS_URL` or `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`/`REDIS_DB`).
 
 ---
 

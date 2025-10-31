@@ -26,6 +26,12 @@ Optional:
    - `QUEUE_CLEANUP_COMPLETED_MS`, `QUEUE_CLEANUP_FAILED_MS`
    - `QUEUE_ADD_TEST_JOB` (`true` to enqueue a sample job at startup in development)
 
+Redis & Caching:
+- Redis is optional; when configured, read endpoints leverage a lightweight cache (`CacheService`) to reduce DB load.
+- Canonical and user contract endpoints set `Cache-Control` headers and use Redis keys `contracts:canonical` and `contracts:user:{id}`.
+- TTL defaults to 300 seconds; caching gracefully disables when Redis is unavailable.
+- Redis config values are provided via `redis.*` config keys, populated from env: `REDIS_URL` or host/port/password/db.
+
 Startup validation:
 - The app validates env vars on boot (Joi schema) and fails fast with clear messages when required values are missing, including provider API keys for the selected `LLM_PROVIDER` and queue options.
 - In development, a strong random JWT secret is generated if `JWT_SECRET` is absent.

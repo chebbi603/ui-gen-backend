@@ -46,13 +46,15 @@ Notes:
   - Returns a user by id.
 
 - `GET /users/:id/contract` (JWT)
-  - Returns the latest canonical contract bound to the user.
-  - Response DTO: `ContractDto`
+  - Returns the latest personalized contract for the user; falls back to the latest canonical contract when none exists.
+  - Caching: `Cache-Control: private, max-age=300`; server-side Redis cache key `contracts:user:{id}` when Redis is configured.
+  - Response DTO: `ContractDto` (includes `id`, `userId`, `version`, `json`, `createdAt`, `updatedAt`, `meta`).
 
 - `POST /users/:id/contract` (JWT + ADMIN)
   - Creates/updates the user’s latest contract.
   - Request DTO: `UpdateUserContractDto`
-  - Response DTO: `ContractDto`
+  - Response DTO: `ContractDto` (standardized to include `id` and `meta`).
+  - Behavior: invalidates `contracts:user:{id}` cache on success.
 
 - `GET /users/:id/tracking-events` (JWT)
   - Lists tracking events for a user; only owner or ADMIN can read.
@@ -76,6 +78,17 @@ Notes:
 - `GET /contracts/:id` (JWT)
   - Returns a contract by id.
   - Response DTO: `ContractDto`
+
+- `GET /contracts/canonical` (Public)
+  - Returns the latest canonical contract (no `userId`).
+  - Caching: `Cache-Control: public, max-age=300`; server-side Redis cache key `contracts:canonical` when Redis is configured.
+  - Response DTO: `ContractDto` (includes `id`, `version`, `json`, timestamps, `meta`).
+
+- `GET /contracts/:id/history` (JWT + ADMIN)
+  - Returns chronological history for the same target as the given contract id.
+    - If the contract targets a user, returns all contracts for that user.
+    - If canonical, returns all canonical contracts.
+  - Response: array of items `{ ...ContractDto, diff }`, where `diff` summarizes JSON changes compared to the previous version: `{ added: Record<string, any>, removed: string[], updated: Record<string, { from: any; to: any }> }`.
 
 ---
 
@@ -115,7 +128,7 @@ Notes:
 - `POST /llm/generate-contract` (JWT)
   - Generates and persists an optimized contract using user analytics and optional base contract.
   - Request DTO: `GenerateContractRequestDto`
-  - Response DTO: `ContractDto`
+  - Response DTO: `ContractDto` (standardized including `id` and `meta`).
 
 ---
 

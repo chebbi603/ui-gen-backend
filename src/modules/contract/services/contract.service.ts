@@ -61,4 +61,35 @@ export class ContractService {
       .sort({ createdAt: -1 });
     return doc;
   }
+
+  /**
+   * Latest canonical contract: records without a userId
+   */
+  async findLatestCanonical() {
+    const doc = await this.contractModel
+      .findOne({ $or: [{ userId: { $exists: false } }, { userId: null }] })
+      .sort({ createdAt: -1 });
+    return doc;
+  }
+
+  /**
+   * Full history for the same target as the given contract id.
+   * If the contract targets a user, return all for that user (chronological).
+   * If canonical, return all canonical (chronological).
+   */
+  async findHistoryByContractId(id: string) {
+    const base = await this.findById(id);
+    let cursor;
+    if ((base as any).userId) {
+      cursor = this.contractModel
+        .find({ userId: (base as any).userId })
+        .sort({ createdAt: 1 });
+    } else {
+      cursor = this.contractModel
+        .find({ $or: [{ userId: { $exists: false } }, { userId: null }] })
+        .sort({ createdAt: 1 });
+    }
+    const list = await cursor.exec();
+    return list;
+  }
 }

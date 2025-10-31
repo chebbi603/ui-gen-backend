@@ -9,6 +9,7 @@ This document captures the current status of the NestJS + MongoDB backend, expla
 - Tests: Unit tests pass (latest run indicated 15 suites / 43 tests; see `docs/test-results.md`). No e2e spec files are present.
 - MongoDB: Connected via `database.uri` built from `MONGO_URL` and `MONGO_DATABASE_NAME`.
 - Sessions: Session tracking module is reintroduced; events can optionally reference `sessionId` for analytics grouping.
+ - Caching: Optional Redis caching via `CacheService` for canonical and user contract reads (TTL 300s; keys `contracts:canonical`, `contracts:user:{id}`); gracefully disabled when Redis is not configured.
 
 ## Bootstrapping & Configuration
 - `src/main.ts`
@@ -84,8 +85,8 @@ Limitations
     - `GET /users/me` (JWT) — Current user profile.
     - `GET /users` (JWT) — List all users.
     - `GET /users/:id` (JWT + ADMIN) — Fetch user by id.
-    - `GET /users/:id/contract` (JWT) — Latest canonical contract for user.
-    - `POST /users/:id/contract` (JWT + ADMIN) — Create/update user’s latest contract.
+    - `GET /users/:id/contract` (JWT) — Latest personalized contract for the user; falls back to canonical when none exists; cached 5 minutes when Redis is configured.
+    - `POST /users/:id/contract` (JWT + ADMIN) — Create/update user’s latest contract; returns standardized `ContractDto` including `id` and `meta`; invalidates user contract cache.
     - `GET /users/:id/tracking-events` (JWT) — List user’s events; owner or ADMIN.
     - `PATCH /users/:id` (JWT) — Update user fields.
     - `DELETE /users/:id` (JWT + ADMIN) — Delete user.
@@ -104,11 +105,12 @@ Limitations
 - Password stored in both `password` and `passwordHash` (only hashed form is required; consider removing the plain `password` field from storage and making validators stricter).
 
 ### Contract Module — `src/modules/contract`
-- `contract.module.ts` — Registers controller/service and schema.
+ - `contract.module.ts` — Registers controllers/services, schema, and cache provider.
 - Controllers
-  - `controllers/contract.controller.ts` — `POST /contracts` validates and stores contract; `GET /contracts/:id` returns by id.
+  - `controllers/contract.controller.ts` — `POST /contracts` validates and stores contract; `GET /contracts/:id` returns by id; `GET /contracts/:id/history` (ADMIN) returns chronological history with JSON diffs.
+  - `controllers/contract-public.controller.ts` — `GET /contracts/canonical` (Public) returns latest canonical; uses cache.
 - Services
-  - `services/contract.service.ts` — Validates JSON with `validateContractJson`, enforces semver version, persists contract; supports `findLatest`, `findLatestByUser`.
+  - `services/contract.service.ts` — Validates JSON with `validateContractJson`, enforces semver version, persists contract; supports `findLatest`, `findLatestByUser`, `findLatestCanonical`, `findHistoryByContractId`.
   - `services/contract-validation.service.ts` — Validation support layer (plus `*.spec.ts`).
 - Validation
   - `validation/contract-validator.ts` — Detailed contract validator with structure checks and warnings; supported by `validation/contract-validator.spec.ts`.
@@ -232,6 +234,7 @@ Limitations
 - Introduce session heartbeat/timeout and stricter event-to-session binding.
 - Strengthen auth flows: refresh tokens, password policies, and brute-force protection.
 - Add e2e tests and a CI pipeline.
+ - Caching: Add canonical cache invalidation on new contract creation and configurable TTL per environment.
 
 ## Appendix: Entities and Relationships
 - `User` — core identity; referenced by `Contract.createdBy`, `Contract.userId`, `Event.userId`, and `Session.userId`.

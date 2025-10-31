@@ -6,11 +6,13 @@ export type UserDTO = {
 };
 
 export type ContractDTO = {
+  id: string;
   userId: string;
   version: string;
   json: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+  meta?: Record<string, unknown>;
 };
 
 export type TrackingEventDTO = {
