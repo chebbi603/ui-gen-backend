@@ -4,7 +4,7 @@ This document captures the current status of the NestJS + MongoDB backend, expla
 
 ## Current State
 - Runtime: CORS enabled, global error filter active, Swagger UI available at `http://localhost:8081/api`.
-- Port: Uses `ConfigService.get('server.port')` with a fallback to `8081` (see Configuration below).
+- Port: Uses `ConfigService.get('server.port')` with a fallback to `8081` (server config is loaded; honors `PORT` when set).
 - Build & Lint: `npm run lint` and `npm run build` succeed.
 - Tests: Unit tests pass (latest run indicated 15 suites / 43 tests; see `docs/test-results.md`). No e2e spec files are present.
 - MongoDB: Connected via `database.uri` built from `MONGO_URL` and `MONGO_DATABASE_NAME`.
@@ -12,27 +12,27 @@ This document captures the current status of the NestJS + MongoDB backend, expla
 
 ## Bootstrapping & Configuration
 - `src/main.ts`
-  - Creates Nest app, enables CORS, applies `CanonicalErrorFilter`, registers Swagger using bearer auth schemes, and starts the server.
-  - Listens on `configService.get('server.port') || 8081`. Since server config is not currently loaded, port falls back to `8081` unless you explicitly set `PORT` and load `server.config.ts` in config index.
+  - Creates Nest app, enables CORS, applies `CanonicalErrorFilter`, registers Swagger using bearer auth schemes, applies the global `ValidationPipe` (whitelist/transform), and starts the server.
+  - Listens on `configService.get('server.port') || 8081`. Server config is loaded via the `ConfigModule`, so `PORT` is honored when provided; otherwise development defaults to `8081`.
 
 - `src/config/database.config.ts`
   - Provides `database.uri = "${MONGO_URL}/${MONGO_DATABASE_NAME}"` using env vars.
 
 - `src/config/server.config.ts`
-  - Declares `server.port` and `rabbitMqBroker` (`RABBITMQ_URL`, `RABBITMQ_TOPIC`). It is not loaded into the `ConfigModule` by default.
+  - Declares `server.port` and `rabbitMqBroker` (`RABBITMQ_URL`, `RABBITMQ_TOPIC`). It is loaded into the `ConfigModule` and exposed under the `server` namespace.
 
 - `src/config/index.ts`
-  - Currently exports only `[databaseConfig]` and comments out the server config import.
+  - Exports `[serverConfig, databaseConfig, authConfig, redisConfig, llmConfig, queueConfig]` and is used by `ConfigModule.forRoot({ load: config })`.
 
 Limitations
-- Server config is not loaded, so `configService.get('server.port')` is `undefined` and the app defaults to `8081`.
-- RabbitMQ configuration is present but unused; no messaging integration currently exists even though amqp dependencies are installed.
-- No env schema validation is enforced; adding a validation layer would catch misconfiguration earlier.
+- RabbitMQ configuration is present but unused; current background processing uses BullMQ over Redis.
+- Redis is required for queues; if not configured, queue processors are disabled and related features will be unavailable.
+- Ensure provider-specific API keys are set in production; env validation enforces this for the selected `LLM_PROVIDER`.
 
 ## Application Module and Bootstrap
 - `src/modules/app/app.module.ts`
-  - Imports core modules: `UserModule`, `AuthModule`, `ContractModule`, `UserContractModule`, `EventModule`, `SessionModule`, `LlmModule`.
-  - Sets up `ConfigModule.forRoot({ load: config })` using `src/config/index.ts`.
+  - Imports core modules: `UserModule`, `AuthModule`, `ContractModule`, `UserContractModule`, `EventModule`, `SessionModule`, `LlmModule`, `QueueModule`.
+  - Sets up `ConfigModule.forRoot({ load: config, validationSchema: Joi.object({...}) })` using `src/config/index.ts`, with Joi validation for server, MongoDB, auth, Redis, LLM provider keys, and queue settings.
   - Configures Mongo connection via `MongooseModule.forRootAsync`, reading `database.uri` from `ConfigService`.
   - Registers Mongoose feature schemas for `User`, `Contract`, `Event`, `UserContract`.
 
@@ -75,14 +75,14 @@ Limitations
 Limitations
 - No refresh-token or token rotation flow; JWTs rely entirely on `JWT_SECRET` validity.
 - `jwt.strategy.ts` defaults `secretOrKey` to `'change-me'`; do not deploy without setting `JWT_SECRET`.
-- Registration DTO is defined in-line in Swagger; consider extracting to a validated DTO class with stronger constraints.
+- Registration uses a validated DTO (`CreateUserDto`) with `class-validator` constraints (`email`, `username`, `password` min length 6) and is documented via `ApiBody`.
 
 ### User Module — `src/modules/user`
 - `user.module.ts` — Registers user controller/service and Mongoose schema.
 - Controllers
   - `controllers/user.controller.ts` —
     - `GET /users/me` (JWT) — Current user profile.
-    - `GET /users` (JWT + ADMIN) — List all users.
+    - `GET /users` (JWT) — List all users.
     - `GET /users/:id` (JWT + ADMIN) — Fetch user by id.
     - `GET /users/:id/contract` (JWT) — Latest canonical contract for user.
     - `POST /users/:id/contract` (JWT + ADMIN) — Create/update user’s latest contract.
@@ -159,18 +159,18 @@ Limitations
 - Services
   - `services/session.service.ts` — Start/end sessions, permission-checked listing and detail. `getWithEvents` fetches user events and filters by `sessionId` if present; includes events without `sessionId` for the session user.
 - DTOs
-  - `dto/create-session.dto.ts` — Requires `contractVersion`; optional `deviceInfo`.
+  - `dto/create-session.dto.ts` — Requires `contractVersion`; optional `deviceInfo`; optional `platform` for client environment tagging.
   - `dto/session.dto.ts` — Session response shape.
   - `dto/session-with-events.dto.ts` — Session extended with `events: TrackingEventDto[]`.
 - Entities
-  - `entities/session.entity.ts` — Schema: `userId`, `startedAt`, `endedAt?`, `deviceInfo?`, `contractVersion`.
+  - `entities/session.entity.ts` — Schema: `userId`, `startedAt`, `endedAt?`, `deviceInfo?`, `platform?`, `contractVersion`.
 
 Limitations
 - `getWithEvents` includes events for the user without `sessionId`; this is convenient but may over-report unrelated events. Consider strict filtering to only session-tagged events or adding a time-bound window.
 - No session timeout or heartbeat; sessions end only via explicit API call.
 
 ### LLM Module — `src/modules/llm`
-- `llm.module.ts` — Registers controller/service; imports `ContractModule` and `EventModule`.
+- `llm.module.ts` — Registers controller/service; imports `ConfigModule`, `ContractModule`, and `EventModule`.
 - Controllers
   - `controllers/llm.controller.ts` — `POST /llm/generate-contract` generates an optimized contract using analytics; persists via `ContractService` and returns the created contract DTO.
 - Services
@@ -179,7 +179,7 @@ Limitations
   - `dto/generate-contract.dto.ts` — Input `userId`, optional `baseContract`, optional `version`.
 
 Limitations
-- Heuristic is intentionally basic; there is no actual LLM integration despite the naming. Consider integrating a real model or a rules engine and capturing provenance in `meta`.
+- The `/llm/generate-contract` endpoint uses a heuristic; provider clients (e.g., Gemini) are integrated and leveraged by the queue processor for background generation. Consider unifying direct generation to use provider clients and capture provenance in `meta`.
 
 ## Common Utilities
 - `src/common/dto/index.ts`
@@ -227,12 +227,11 @@ Limitations
 - No request throttling/rate limiting configured; consider protecting ingestion endpoints.
 
 ## Known Gaps and Next Steps
-- Load server config (`server.config.ts`) in `src/config/index.ts` to use `PORT` and prepare for RabbitMQ integration.
-- Replace the legacy contract validator with the enhanced validator where appropriate; provide strict DTO validation for registration and contract payloads.
+- Replace the legacy contract validator with the enhanced validator where appropriate; provide strict DTO validation for contract payloads.
 - Add pagination and filtering for event and user lists.
 - Introduce session heartbeat/timeout and stricter event-to-session binding.
 - Strengthen auth flows: refresh tokens, password policies, and brute-force protection.
-- Add e2e tests and a CI pipeline; consider environment validation on boot.
+- Add e2e tests and a CI pipeline.
 
 ## Appendix: Entities and Relationships
 - `User` — core identity; referenced by `Contract.createdBy`, `Contract.userId`, `Event.userId`, and `Session.userId`.

@@ -49,8 +49,10 @@ Swagger: `http://localhost:8081/api`
 - Controllers:
   - `UserController`
     - `GET /users/me` (JWT) — current user profile.
-    - `GET /users` (JWT + ADMIN) — list all users.
+    - `GET /users` (JWT) — list all users.
     - `GET /users/:id` (JWT + ADMIN) — fetch user by id.
+    - `GET /users/:id/contract` (JWT) — latest canonical contract bound to the user.
+    - `POST /users/:id/contract` (JWT + ADMIN) — create/update user’s latest contract.
     - `PATCH /users/:id` (JWT) — update user fields.
     - `DELETE /users/:id` (JWT + ADMIN) — delete a user.
 - Services:
@@ -151,11 +153,24 @@ Swagger: `http://localhost:8081/api`
 - DTOs:
   - `CreateSessionDto`, `SessionDto`, `SessionWithEventsDto`
 - Entities:
-  - `Session` — Mongoose schema with `userId`, `startedAt`, `endedAt`, `deviceInfo`, `contractVersion`.
+  - `Session` — Mongoose schema with `userId`, `startedAt`, `endedAt`, `deviceInfo`, `contractVersion`, optional `platform`.
 - Contents:
   - `SessionModule` — registers `{ name: Session.name, schema: SessionSchema }` and exports `MongooseModule`.
   - `entities/session.entity.ts` — the schema definition.
-- Notes: No controllers; acts as a persistence module for session-related features.
+- Notes: DTOs and endpoints include optional `platform` for analytics segmentation (e.g., `web`, `ios`, `android`).
+
+---
+
+## Queue Module
+
+- Purpose: Background processing for contract generation and related jobs.
+- Providers:
+  - `QueueService` — initializes BullMQ queues and workers; manages job cleanup.
+  - `GeminiGenerationProcessor` — processes gemini-generation jobs using `LlmService` and persists via `ContractService`.
+- Imports:
+  - `ConfigModule`, `LlmModule`, `ContractModule`.
+- Configuration:
+  - Controlled via `QUEUE_*` env vars (attempts, backoff, timeout, cleanup windows, test job).
 
 ---
 
@@ -171,11 +186,13 @@ Swagger: `http://localhost:8081/api`
 ## Configuration
 
 - Config (`src/config`):
-  - `server.config.ts` — `PORT`, RabbitMQ broker configuration placeholders.
+  - `server.config.ts` — exposes `server.port` and RabbitMQ broker keys.
   - `database.config.ts` — MongoDB URI and options.
-  - `index.ts` — loads config via `@nestjs/config`.
+  - `auth.config.ts`, `redis.config.ts`, `llm.config.ts`, `queue.config.ts` — provider-specific configs.
+  - `index.ts` — loads all configs via `@nestjs/config`.
 - Bootstrap (`src/main.ts`):
-  - Enables CORS, Swagger, global error filter, and listens on `PORT` or `8081`.
+  - Enables CORS, Swagger, global error filter, global `ValidationPipe` (whitelist/forbidNonWhitelisted/transform).
+  - Listens on `server.port` (from `server.config.ts`) with fallback to `8081`.
 
 ---
 

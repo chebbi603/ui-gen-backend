@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from '../services/auth.service';
+// Stub @nestjs/jwt to avoid loading jsonwebtoken in nested imports
+jest.mock('@nestjs/jwt', () => ({
+  JwtService: class JwtService {},
+}));
 
 describe('AuthController', () => {
   let controller: AuthController;

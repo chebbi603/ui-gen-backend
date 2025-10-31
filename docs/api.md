@@ -38,7 +38,7 @@ Notes:
 - `GET /users/me` (JWT)
   - Returns the current user profile.
 
-- `GET /users` (JWT + ADMIN)
+- `GET /users` (JWT)
   - Returns all users.
   - Response DTO: `UserSummaryDto[]`
 
@@ -147,6 +147,7 @@ Common statuses:
   - Starts a session for the authenticated user.
   - Request DTO: `CreateSessionDto`
   - Response DTO: `SessionDto`
+  - Request may include optional `platform` (e.g., `web`, `ios`, `android`).
 
 - `POST /sessions/:id/end` (JWT)
   - Ends a session; only owner or ADMIN can end.
@@ -159,10 +160,12 @@ Common statuses:
 - `GET /sessions/:id` (JWT)
   - Returns a session with its associated events.
   - Response DTO: `SessionWithEventsDto`
+  - Responses include optional `platform` when provided at session start.
 
 Notes:
 - Events now accept optional `sessionId`, allowing analytics grouping by session.
 - Frontend may generate session IDs or rely on backend to manage session lifecycle.
+ - Registration uses validated DTOs; `email`, `username`, and `password` (min 6) are required.
 
 ---
 

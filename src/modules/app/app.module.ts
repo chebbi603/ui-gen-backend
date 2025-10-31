@@ -20,6 +20,7 @@ import {
   UserContractSchema,
 } from '../user-contract/entities/user-contract.entity';
 import { LlmModule } from '../llm/llm.module';
+import { QueueModule } from '../queue/queue.module';
 
 @Module({
   imports: [
@@ -48,7 +49,7 @@ import { LlmModule } from '../llm/llm.module';
         REDIS_PASSWORD: Joi.string().optional(),
         REDIS_DB: Joi.number().optional(),
         // LLM providers
-        LLM_PROVIDER: Joi.string().valid('openai', 'anthropic').optional(),
+        LLM_PROVIDER: Joi.string().valid('openai', 'anthropic', 'gemini').optional(),
         OPENAI_API_KEY: Joi.string().when('LLM_PROVIDER', {
           is: 'openai',
           then: Joi.string().when('NODE_ENV', {
@@ -71,6 +72,24 @@ import { LlmModule } from '../llm/llm.module';
         }),
         ANTHROPIC_MODEL: Joi.string().optional(),
         ANTHROPIC_BASE_URL: Joi.string().optional(),
+        GEMINI_API_KEY: Joi.string().when('LLM_PROVIDER', {
+          is: 'gemini',
+          then: Joi.string().when('NODE_ENV', {
+            is: 'production',
+            then: Joi.required(),
+            otherwise: Joi.optional(),
+          }),
+          otherwise: Joi.optional(),
+        }),
+        GEMINI_MODEL: Joi.string().optional(),
+        GEMINI_BASE_URL: Joi.string().optional(),
+        // Queue options
+        QUEUE_GEMINI_ATTEMPTS: Joi.number().optional(),
+        QUEUE_GEMINI_BACKOFF_MS: Joi.number().optional(),
+        QUEUE_GEMINI_TIMEOUT_MS: Joi.number().optional(),
+        QUEUE_CLEANUP_COMPLETED_MS: Joi.number().optional(),
+        QUEUE_CLEANUP_FAILED_MS: Joi.number().optional(),
+        QUEUE_ADD_TEST_JOB: Joi.boolean().optional(),
         // Seeding flag
         SEED_ENABLED: Joi.boolean().optional(),
       }),
@@ -82,12 +101,17 @@ import { LlmModule } from '../llm/llm.module';
     EventModule,
     SessionModule,
     LlmModule,
+    QueueModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         uri: config.get<string>('database.uri'),
         useNewUrlParser: true,
         useUnifiedTopology: true,
+        // Reduce connection wait in environments where Atlas is unreachable
+        serverSelectionTimeoutMS: Number(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS ?? 5000),
+        connectTimeoutMS: Number(process.env.MONGO_CONNECT_TIMEOUT_MS ?? 5000),
+        socketTimeoutMS: Number(process.env.MONGO_SOCKET_TIMEOUT_MS ?? 5000),
       }),
       inject: [ConfigService],
     }),

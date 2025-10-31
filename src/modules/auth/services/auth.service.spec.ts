@@ -2,8 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UserService } from '../../user/services/user.service';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 jest.mock('bcrypt');
+// Stub @nestjs/jwt to avoid loading jsonwebtoken/jwa in tests
+jest.mock('@nestjs/jwt', () => ({
+  JwtService: class JwtService {},
+}));
 
 describe('AuthService (unit)', () => {
   let service: AuthService;
@@ -14,6 +19,7 @@ describe('AuthService (unit)', () => {
   const mockJwt = {
     sign: jest.fn().mockReturnValue('signed-token'),
   } as any;
+  const mockConfig: any = { get: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -22,6 +28,7 @@ describe('AuthService (unit)', () => {
         AuthService,
         { provide: UserService, useValue: mockUserService },
         { provide: JwtService, useValue: mockJwt },
+        { provide: ConfigService, useValue: mockConfig },
       ],
     }).compile();
 
@@ -64,12 +71,25 @@ describe('AuthService (unit)', () => {
 
   describe('login', () => {
     it('returns accessToken and role with id', async () => {
+      // Arrange config and bcrypt mocks for refresh token flow
+      mockConfig.get.mockImplementation((key: string) => {
+        if (key === 'auth.jwt.refreshSecret') return 'test-refresh-secret';
+        if (key === 'auth.jwt.refreshExpiresIn') return '1h';
+        return undefined;
+      });
+      (bcrypt.genSalt as unknown as jest.Mock).mockResolvedValue('salt');
+      (bcrypt.hash as unknown as jest.Mock).mockResolvedValue('hashed');
+      (mockUserService as any).addRefreshToken = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
       const user: any = { _id: 'u1', id: 'u1', email: 'a@b.c', role: 'ADMIN' };
       const res = await service.login(user);
       expect(res).toEqual({
         _id: 'u1',
         role: 'ADMIN',
         accessToken: 'signed-token',
+        refreshToken: 'signed-token',
       });
       expect(mockJwt.sign).toHaveBeenCalledWith({
         email: 'a@b.c',

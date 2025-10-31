@@ -14,5 +14,10 @@ export default registerAs('llm', (): Record<string, any> => {
       model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
       baseUrl: process.env.ANTHROPIC_BASE_URL,
     },
+    gemini: {
+      apiKey: process.env.GEMINI_API_KEY,
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      baseUrl: process.env.GEMINI_BASE_URL,
+    },
   };
 });

@@ -23,12 +23,6 @@ export class AuthController {
     return this.authService.login(req.user);
   }
 
-  @Post('/signup')
-  async signUpLegacy(@Request() req) {
-    await this.authService.signUp(req.body);
-    return { ok: true };
-  }
-
   @Post('/register')
   @ApiBody({
     schema: {

@@ -1,6 +1,10 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { LocalStrategy } from './local.strategy';
 import { AuthService } from '../services/auth.service';
+// Stub @nestjs/jwt to avoid loading jsonwebtoken in nested imports
+jest.mock('@nestjs/jwt', () => ({
+  JwtService: class JwtService {},
+}));
 
 describe('LocalStrategy', () => {
   let strategy: LocalStrategy;

@@ -66,12 +66,12 @@ describe('UserService (unit)', () => {
 
   describe('findAll', () => {
     it('returns a query for users list', async () => {
-      const q = { exec: jest.fn() };
+      const q = { exec: jest.fn().mockResolvedValue(['u1']) };
       MockModel.find.mockReturnValue(q);
       const res = await service.findAll();
       expect(MockModel.find).toHaveBeenCalledWith({});
-      expect(res).toBe(q);
-      expect((res as any).exec).toBeDefined();
+      expect(q.exec).toHaveBeenCalled();
+      expect(res).toEqual(['u1']);
     });
   });
 

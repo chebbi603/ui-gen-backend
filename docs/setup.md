@@ -17,12 +17,17 @@ Optional:
 - `RABBITMQ_URL`, `RABBITMQ_TOPIC`
 - `JWT_EXPIRES_IN` (e.g., `1h`, `7d`)
 - `REDIS_URL` or (`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB`)
-- `LLM_PROVIDER` (`openai` or `anthropic`)
+- `LLM_PROVIDER` (`openai`, `anthropic`, or `gemini`)
 - `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`
 - `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_BASE_URL`
+ - `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_BASE_URL`
+ - Queue (BullMQ) options for background generation:
+   - `QUEUE_GEMINI_ATTEMPTS`, `QUEUE_GEMINI_BACKOFF_MS`, `QUEUE_GEMINI_TIMEOUT_MS`
+   - `QUEUE_CLEANUP_COMPLETED_MS`, `QUEUE_CLEANUP_FAILED_MS`
+   - `QUEUE_ADD_TEST_JOB` (`true` to enqueue a sample job at startup in development)
 
 Startup validation:
-- The app validates env vars on boot and fails fast with clear messages when required values are missing.
+- The app validates env vars on boot (Joi schema) and fails fast with clear messages when required values are missing, including provider API keys for the selected `LLM_PROVIDER` and queue options.
 - In development, a strong random JWT secret is generated if `JWT_SECRET` is absent.
 - In production, missing required vars (e.g., `JWT_SECRET`, provider API keys) prevent startup.
 
@@ -53,7 +58,7 @@ CORS is enabled globally. To restrict origins, update server bootstrap to pass o
 
 ## Roles & Access
 
-- Admin-only routes use role guard (e.g., `/users`, `/users/:id`).
+- Admin-only routes use role guard (e.g., `/users/:id`, user deletion, and selected contract mutation endpoints). `/users` requires JWT but not ADMIN.
 - Event and user-contract endpoints enforce ownership or ADMIN role.
 
 ## Contract JSON Requirements

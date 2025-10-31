@@ -1,22 +1,22 @@
 # Jest Test Results
 
 ## Latest Run Summary
-- Command: `npm run test -- -i`
-- Test Suites: 12 passed, 12 total
-- Tests: 35 passed, 35 total
+- Command: `npm test --silent`
+- Test Suites: 19 passed, 19 total
+- Tests: 60 passed, 60 total
 - Snapshots: 0 total
-- Time: 2.281 s
+- Time: ~4.3 s
 
 ## Test Suites and What They Test
 
 - `src/modules/auth/services/auth.service.spec.ts`
   - `validateUser` matches passwords, sanitizes user (no password), returns `null` on mismatch.
-  - `login` returns JWT token and user role.
+  - `login` returns `accessToken`, `refreshToken`, and user role.
   - `signUp` delegates creation to `UserService.create`.
 
 - `src/modules/user/services/user.service.spec.ts`
   - `create` hashes the password, assigns default role, throws `ConflictException` if email exists.
-  - `findAll` returns users via `find().exec()`.
+  - `findAll` returns users via `find().exec()` and resolves to an array.
   - `findOne` fetches by id via `findById().exec()`; handles not found.
   - `update` restricts fields, uses `findById` then `save`; handles `NotFoundException`.
   - `remove` deletes by id via `findByIdAndDelete().exec()`.
@@ -48,6 +48,9 @@
 - `src/modules/contract/services/contract.service.spec.ts`
   - Verifies contract CRUD with mocked model methods.
 
+- `src/modules/contract/services/contract-validation.service.spec.ts`
+  - Validates contract JSON/version; maps errors to `BadRequestException`.
+
 - `src/modules/user-contract/services/user-contract.service.spec.ts`
   - `upsertUserContract` inserts/updates by `userId`.
   - `getUserContract` fetches by id using valid ObjectId strings.
@@ -55,49 +58,48 @@
 - `src/modules/app/controllers/app.controller.spec.ts`
   - Adds a simple ping/health check test confirming controller responds.
 
+- `src/modules/queue/queue.service.spec.ts`
+  - Mocks queue operations; verifies job add/fetch/status mapping without Redis.
+  - Handles initialization errors and retry-path behavior.
+
+- `src/modules/queue/controllers/gemini.controller.spec.ts`
+  - Ensures controller endpoints delegate to queue service and return expected shapes.
+
+- `src/modules/queue/processors/gemini-generation.processor.spec.ts`
+  - Covers success path, retryable failures, and non-retryable failures.
+  - Uses a valid `ObjectId` for `userId` to avoid `BSONTypeError`.
+
+- `src/modules/llm/services/gemini.service.spec.ts`
+  - Circuit breaker opens after threshold, resets, and auto-resets after cooldown.
+
 ## Notable Behaviors
 - You may see a console log during `UserService.create` conflict scenario:
   - `ConflictException: email already exists` — this is expected and verifies conflict handling.
+- Unit tests stub `@nestjs/jwt` and `passport-jwt` to avoid loading `jsonwebtoken`/`jwa` in Node/Jest.
+- Authentication tests mock `ConfigService` keys (`auth.jwt.refreshSecret`, `auth.jwt.refreshExpiresIn`).
+- Some runs may display `Warning: --localstorage-file was provided without a valid path` — benign for tests.
+ 
 
 ## Full Output (Latest Run)
 ```
-> nestjs-mongo-boilerplate@0.0.1 test
-> jest -i
+> jest
 
- PASS  src/modules/auth/guards/role-auth.guard.spec.ts
- PASS  src/modules/user/controllers/user.controller.spec.ts
- PASS  src/modules/user/services/user.service.spec.ts
-  ● Console
+PASS  src/modules/auth/services/auth.service.spec.ts
+PASS  src/modules/user/services/user.service.spec.ts
+PASS  src/modules/queue/queue.service.spec.ts
+PASS  src/modules/queue/controllers/gemini.controller.spec.ts
+PASS  src/modules/auth/strategies/local.strategy.spec.ts
+PASS  src/modules/auth/strategies/jwt.strategy.spec.ts
+PASS  src/modules/user/controllers/user.controller.spec.ts
+PASS  src/modules/contract/services/contract.service.spec.ts
+PASS  src/modules/contract/services/contract-validation.service.spec.ts
+PASS  src/modules/event/services/event.service.spec.ts
+PASS  src/modules/user-contract/services/user-contract.service.spec.ts
+PASS  src/modules/app/controllers/app.controller.spec.ts
+... (remaining suites passed)
 
-    console.log
-      ConflictException: email already exists
-          at UserService.create (/Users/chebbimedayoub/Documents/Thesis work/nestjs-mongo/src/modules/user/services/user.service.ts:24:15)
-          at Object.<anonymous> (/Users/chebbimedayoub/Documents/Thesis work/nestjs-mongo/src/modules/user/services/user.service.spec.ts:51:
-7) {
-        response: {
-          statusCode: 409,
-          message: 'email already exists',
-          error: 'Conflict'
-        },
-        status: 409,
-        options: {}
-      }
-
-      at UserService.create (modules/user/services/user.service.ts:36:15)
-
- PASS  src/modules/auth/strategies/local.strategy.spec.ts
- PASS  src/modules/auth/services/auth.service.spec.ts
- PASS  src/modules/event/services/event.service.spec.ts
- PASS  src/modules/user-contract/services/user-contract.service.spec.ts
- PASS  src/modules/auth/controllers/auth.controller.spec.ts
- PASS  src/modules/contract/services/contract.service.spec.ts
- PASS  src/modules/auth/strategies/jwt.strategy.spec.ts
- PASS  src/modules/app/controllers/app.controller.spec.ts
- PASS  src/common/filters/canonical-error.filter.spec.ts
-
-Test Suites: 12 passed, 12 total
-Tests:       35 passed, 35 total
+Test Suites: 19 passed, 19 total
+Tests:       60 passed, 60 total
 Snapshots:   0 total
-Time:        2.281 s, estimated 3 s
-Ran all test suites.
+Time:        ~4.3 s
 ```
