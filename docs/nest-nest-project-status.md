@@ -1,3 +1,4 @@
+Project: nestjs-mongo (NestJS)
 # Project Status and File-by-File Guide
 
 This document captures the current status of the NestJS + MongoDB backend, explains what each file does, how components work together, and notes practical limitations and next steps. It reflects the repository as-is and is intended to help you quickly understand system behavior and where to improve.
@@ -6,7 +7,8 @@ This document captures the current status of the NestJS + MongoDB backend, expla
 - Runtime: CORS enabled, global error filter active, Swagger UI available at `http://localhost:8081/api`.
 - Port: Uses `ConfigService.get('server.port')` with a fallback to `8081` (server config is loaded; honors `PORT` when set).
 - Build & Lint: `npm run lint` and `npm run build` succeed.
-- Tests: Unit tests pass (latest run indicated 15 suites / 43 tests; see `docs/test-results.md`). No e2e spec files are present.
+- Tests: Unit tests pass (see `docs/test-results.md`).
+- E2E: End-to-end tests are present and pass; run `npm run test:e2e`. E2E environment uses `test/jest-e2e.json` with module mocks for `jsonwebtoken` and `ioredis` to avoid import-time issues and external dependencies.
 - MongoDB: Connected via `database.uri` built from `MONGO_URL` and `MONGO_DATABASE_NAME`.
 - Sessions: Session tracking module is reintroduced; events can optionally reference `sessionId` for analytics grouping.
  - Caching: Optional Redis caching via `CacheService` for canonical and user contract reads (TTL 300s; keys `contracts:canonical`, `contracts:user:{id}`); gracefully disabled when Redis is not configured.
@@ -109,6 +111,7 @@ Limitations
 - Controllers
   - `controllers/contract.controller.ts` — `POST /contracts` validates and stores contract; `GET /contracts/:id` returns by id; `GET /contracts/:id/history` (ADMIN) returns chronological history with JSON diffs.
   - `controllers/contract-public.controller.ts` — `GET /contracts/canonical` (Public) returns latest canonical; uses cache.
+    - Also exposes `GET /contracts/public/canonical` (Public alias) to avoid dynamic route collisions; identical behavior.
 - Services
   - `services/contract.service.ts` — Validates JSON with `validateContractJson`, enforces semver version, persists contract; supports `findLatest`, `findLatestByUser`, `findLatestCanonical`, `findHistoryByContractId`.
   - `services/contract-validation.service.ts` — Validation support layer (plus `*.spec.ts`).

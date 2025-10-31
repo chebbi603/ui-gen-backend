@@ -17,12 +17,12 @@ import { RoleGuard } from '../../auth/guards/role-auth.guard';
 
 @ApiTags('contracts')
 @ApiBearerAuth('accessToken')
-@UseGuards(JwtAuthGuard)
 @Controller('contracts')
 export class ContractController {
   constructor(private readonly contractService: ContractService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @ApiBody({ type: CreateContractDto })
   @ApiResponse({
     status: 201,
@@ -50,7 +50,9 @@ export class ContractController {
     } as ContractDto;
   }
 
-  @Get(':id')
+  // Constrain :id to Mongo ObjectId format to avoid matching 'canonical'
+  @UseGuards(JwtAuthGuard)
+  @Get(':id([0-9a-fA-F]{24})')
   @ApiResponse({
     status: 200,
     description: 'Get contract by id.',
@@ -73,7 +75,8 @@ export class ContractController {
 
   @SetMetadata('roles', ['ADMIN'])
   @UseGuards(JwtAuthGuard, RoleGuard)
-  @Get(':id/history')
+  // Constrain :id to Mongo ObjectId format to avoid matching 'canonical'
+  @Get(':id([0-9a-fA-F]{24})/history')
   @ApiResponse({ status: 200, description: 'Contract history.' })
   async getHistory(@Param('id') id: string) {
     const list = await this.contractService.findHistoryByContractId(id);

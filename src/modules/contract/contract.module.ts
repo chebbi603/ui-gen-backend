@@ -16,7 +16,9 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule,
   ],
   providers: [ContractService, ContractValidationService, CacheService],
-  controllers: [ContractController, ContractPublicController],
+  // Register public controller first so static routes like 'canonical'
+  // are matched before dynamic ':id' routes in ContractController.
+  controllers: [ContractPublicController, ContractController],
   exports: [MongooseModule, ContractService, ContractValidationService],
 })
 export class ContractModule {}

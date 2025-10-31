@@ -3,6 +3,10 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "setupFilesAfterEnv": ["<rootDir>/setup-e2e.ts"],
+  "moduleNameMapper": {
+    "^jsonwebtoken$": "<rootDir>/__mocks__/jsonwebtoken.ts"
+  },
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

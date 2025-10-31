@@ -36,4 +36,12 @@ export class ContractPublicController {
     await this.cache.set(cacheKey, res, 300);
     return res;
   }
+
+  // Provide a non-conflicting alias under /contracts/public/canonical
+  @Get('public/canonical')
+  @Header('Cache-Control', 'public, max-age=300')
+  @ApiResponse({ status: 200, description: 'Latest canonical contract (alias).', type: ContractDto })
+  async getCanonicalAlias(): Promise<ContractDto | null> {
+    return this.getCanonical();
+  }
 }

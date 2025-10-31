@@ -1,3 +1,4 @@
+Project: nestjs-mongo (NestJS)
 # Dynamic UX MVP API — Current Backend Status
 
 Base URL: `http://localhost:8081`
@@ -29,7 +30,7 @@ Swagger: `http://localhost:8081/api`
 
 Notes:
 - Uses `LocalAuthGuard` for credential validation.
-- JWT is required for all non-auth endpoints.
+- JWT is required for most non-auth endpoints; public exceptions are explicitly marked (e.g., `/contracts/canonical`, `/contracts/public/canonical`).
 
 ---
 
@@ -83,6 +84,11 @@ Notes:
   - Returns the latest canonical contract (no `userId`).
   - Caching: `Cache-Control: public, max-age=300`; server-side Redis cache key `contracts:canonical` when Redis is configured.
   - Response DTO: `ContractDto` (includes `id`, `version`, `json`, timestamps, `meta`).
+
+- `GET /contracts/public/canonical` (Public, alias)
+  - Alias of `/contracts/canonical` provided to avoid dynamic route collisions with guarded routes.
+  - Identical response and caching behavior.
+  - Recommended as a fallback when clients encounter `401`/`404` on `/contracts/canonical` due to environment-specific route conflicts.
 
 - `GET /contracts/:id/history` (JWT + ADMIN)
   - Returns chronological history for the same target as the given contract id.

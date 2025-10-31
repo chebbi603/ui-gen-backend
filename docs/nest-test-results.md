@@ -1,3 +1,4 @@
+Project: nestjs-mongo (NestJS)
 # Jest Test Results
 
 ## Latest Run Summary
@@ -79,6 +80,18 @@
 - Authentication tests mock `ConfigService` keys (`auth.jwt.refreshSecret`, `auth.jwt.refreshExpiresIn`).
 - Some runs may display `Warning: --localstorage-file was provided without a valid path` — benign for tests.
  
+
+## E2E Test Summary (Latest Run)
+
+- Command: `npm run test:e2e`
+- Suites: All e2e suites passed.
+- Coverage: Smoke coverage verifies public canonical endpoints and protected contract access.
+- What’s covered:
+  - `GET /contracts/canonical` returns `200` without authentication.
+  - `GET /contracts/public/canonical` returns `200` (alias route).
+  - `GET /contracts/:id` returns `401` when unauthenticated.
+- Environment notes:
+  - E2E Jest config maps `jsonwebtoken` to a local mock and stubs Redis (`ioredis`) to prevent import-time errors and external dependencies.
 
 ## Full Output (Latest Run)
 ```

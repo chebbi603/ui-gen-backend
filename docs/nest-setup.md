@@ -1,3 +1,4 @@
+Project: nestjs-mongo (NestJS)
 # Setup & Environment
 
 ## Prerequisites
@@ -43,6 +44,11 @@ Startup validation:
 - Start dev: `npm run start`
 - Swagger: `http://localhost:8081/api`
 
+### Public Canonical Endpoints
+
+- `GET /contracts/canonical` — latest canonical contract (no authentication required).
+- `GET /contracts/public/canonical` — public alias; identical response and caching; useful when environments have route guard collisions.
+
 ## Seeding
 
 When `SEED_ENABLED=true`, the app seeds:
@@ -85,3 +91,9 @@ CORS is enabled globally. To restrict origins, update server bootstrap to pass o
 
 - API docs: `/api` (Swagger UI)
 - Endpoint reference: `docs/api.md`
+
+## Testing
+
+- Unit: `npm run test`
+- E2E: `npm run test:e2e`
+  - Uses `test/jest-e2e.json` and mocks `jsonwebtoken`/`ioredis` for stability.

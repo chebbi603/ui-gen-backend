@@ -1,3 +1,4 @@
+Project: nestjs-mongo (NestJS)
 # Modules Overview
 
 This document summarizes each NestJS module in the backend, its responsibilities, exposed routes, and main components.
@@ -74,6 +75,7 @@ Swagger: `http://localhost:8081/api`
       - Response DTO: `ContractDto`
   - `ContractPublicController` (Public)
     - `GET /contracts/canonical` — latest canonical contract; cached for 5 minutes when Redis is configured.
+    - `GET /contracts/public/canonical` — public alias to avoid dynamic route collisions; identical response and caching.
   - Admin endpoints:
     - `GET /contracts/:id/history` — chronological history with simple JSON diffs.
 - Services:

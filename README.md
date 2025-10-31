@@ -2,9 +2,9 @@
 
 Dynamic UX MVP API built with NestJS and MongoDB.
 
-- API reference: `docs/api.md`
-- Modules overview: `docs/modules.md`
-- Setup guide: `docs/setup.md`
+- API reference: `docs/nest-api.md`
+- Modules overview: `docs/nest-modules.md`
+- Setup guide: `docs/nest-setup.md`
 - Swagger UI: visit `http://localhost:8081/api` when the server is running.
 
 ## Recent Changes
@@ -19,6 +19,9 @@ Dynamic UX MVP API built with NestJS and MongoDB.
 - Server port comes from `server.port` (loaded from `server.config.ts`) with fallback to `8081`.
 - Cleaned unused imports and parameters; lints now pass cleanly.
 - Synced docs (`api.md`, `modules.md`) to reference request/response DTOs.
+
+- Added public canonical alias endpoint: `GET /contracts/public/canonical` (identical to `/contracts/canonical`), provided to avoid dynamic route collisions.
+- Added E2E tests verifying public canonical endpoints and protected contract routes; e2e config (`test/jest-e2e.json`) maps `jsonwebtoken` and `ioredis` to local mocks for stable runs.
 
 ## Installation
 
