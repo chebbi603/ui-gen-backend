@@ -7,6 +7,7 @@ import { ContractValidationService } from './services/contract-validation.servic
 import { ContractPublicController } from './controllers/contract-public.controller';
 import { CacheService } from '../../common/services/cache.service';
 import { ConfigModule } from '@nestjs/config';
+import { ContractMergeService } from './services/contract-merge.service';
 
 @Module({
   imports: [
@@ -15,10 +16,10 @@ import { ConfigModule } from '@nestjs/config';
     ]),
     ConfigModule,
   ],
-  providers: [ContractService, ContractValidationService, CacheService],
+  providers: [ContractService, ContractValidationService, ContractMergeService, CacheService],
   // Register public controller first so static routes like 'canonical'
   // are matched before dynamic ':id' routes in ContractController.
   controllers: [ContractPublicController, ContractController],
-  exports: [MongooseModule, ContractService, ContractValidationService],
+  exports: [MongooseModule, ContractService, ContractValidationService, ContractMergeService],
 })
 export class ContractModule {}
