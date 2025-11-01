@@ -1,0 +1,422 @@
+{
+  "meta": {
+    "appName": "DynamicUXDemo",
+    "version": "1.0.0",
+    "schemaVersion": "2.0.0",
+    "description": "Multipurpose baseline contract for AI-driven UX thesis. Supports any app with content discovery, user auth, and personalized flows.",
+    "authors": ["Thesis Researcher"],
+    "generatedAt": "2025-11-01T13:00:00Z",
+    "minFlutterVersion": "3.7.0"
+  },
+  "dataModels": {
+    "Track": {
+      "primaryKey": "id",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "subtitle": { "type": "string", "required": false },
+        "imageUrl": { "type": "string", "format": "uri", "required": false },
+        "duration": { "type": "integer", "minimum": 0, "required": false },
+        "rating": { "type": "number", "minimum": 0, "maximum": 5, "required": false }
+      }
+    },
+    "Playlist": {
+      "primaryKey": "id",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "imageUrl": { "type": "string", "format": "uri", "required": false },
+        "items": {
+          "type": "array",
+          "items": { "type": "string", "ref": "Track" },
+          "required": false
+        }
+      }
+    },
+    "Podcast": {
+      "primaryKey": "id",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "category": {
+          "type": "string",
+          "enum": [
+            "news",
+            "education",
+            "entertainment",
+            "technology",
+            "health",
+            "sports",
+            "business",
+            "arts"
+          ],
+          "required": false
+        },
+        "episodes": { "type": "array", "items": { "type": "string" }, "required": false }
+      }
+    },
+    "Book": {
+      "primaryKey": "id",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "author": { "type": "string", "required": true },
+        "genre": { "type": "string", "enum": ["fiction", "non-fiction", "history", "science", "biography", "fantasy", "mystery"], "required": false },
+        "progress": { "type": "number", "minimum": 0, "maximum": 100, "required": false }
+      }
+    },
+    "User": {
+      "primaryKey": "id",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "email": { "type": "string", "format": "email", "required": true },
+        "name": { "type": "string", "required": true },
+        "preferences": {
+          "type": "object",
+          "required": false,
+          "properties": {
+            "favoriteCategories": { "type": "array", "items": { "type": "string" }, "required": false }
+          }
+        }
+      }
+    }
+  },
+  "services": [
+    {
+      "name": "AuthService",
+      "baseUrl": "http://localhost:8081/auth",
+      "endpoints": [
+        {
+          "name": "login",
+          "method": "POST",
+          "path": "/login",
+          "authRequired": false,
+          "params": {
+            "email": { "type": "string", "format": "email", "required": true },
+            "password": { "type": "string", "required": true }
+          },
+          "response": {
+            "type": "object",
+            "properties": {
+              "token": { "type": "string" },
+              "user": { "$ref": "User" }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ContentService",
+      "baseUrl": "http://localhost:8081/content",
+      "endpoints": [
+        {
+          "name": "getItems",
+          "method": "GET",
+          "path": "/items",
+          "params": {
+            "page": { "type": "integer", "minimum": 1, "required": false },
+            "category": { "type": "string", "required": false }
+          },
+          "caching": "5min",
+          "retry": 3
+        },
+        {
+          "name": "search",
+          "method": "GET",
+          "path": "/search",
+          "params": {
+            "query": { "type": "string", "required": true }
+          }
+        },
+        {
+          "name": "getDetails",
+          "method": "GET",
+          "path": "/{id}",
+          "params": {
+            "id": { "type": "string", "required": true }
+          }
+        }
+      ]
+    }
+  ],
+  "pagesUI": {
+    "routes": {
+      "/": { "pageId": "landing", "auth": false },
+      "/login": { "pageId": "login", "auth": false },
+      "/home": { "pageId": "home", "auth": true },
+      "/content/music": { "pageId": "music", "auth": true },
+      "/content/podcasts": { "pageId": "podcasts", "auth": true },
+      "/content/ebooks": { "pageId": "ebooks", "auth": true }
+    },
+    "bottomNavigation": {
+      "enabled": true,
+      "authRequired": true,
+      "items": [
+        { "label": "Home", "icon": "home", "route": "/home" },
+        { "label": "Content A", "icon": "library_music", "route": "/content/music" },
+        { "label": "Content B", "icon": "mic", "route": "/content/podcasts" },
+        { "label": "Content C", "icon": "book", "route": "/content/ebooks" }
+      ]
+    },
+    "pages": {
+      "landing": {
+        "id": "landing",
+        "title": "Welcome",
+        "scope": "public",
+        "layout": "center",
+        "children": [
+          { "type": "text", "text": "Discover Your Personalized Experience", "style": "largeTitle", "binding": null },
+          { "type": "text", "text": "This demo app adapts to your needs using AI.", "style": "body" },
+          { "type": "button", "text": "Get Started", "action": { "type": "navigate", "route": "/login" }, "variant": "primary", "size": "large" },
+          { "type": "text", "text": "Already have an account? Sign in.", "style": "caption", "action": { "type": "navigate", "route": "/login" } }
+        ]
+      },
+      "login": {
+        "id": "login",
+        "title": "Sign In",
+        "scope": "public",
+        "layout": "center",
+        "children": [
+          {
+            "type": "card",
+            "children": [
+              {
+                "type": "form",
+                "key": "loginForm",
+                "children": [
+                  {
+                    "type": "textField",
+                    "label": "Email",
+                    "key": "email",
+                    "validation": { "required": true, "pattern": "email", "message": "Valid email required" },
+                    "keyboard": "email"
+                  },
+                  {
+                    "type": "textField",
+                    "label": "Password",
+                    "key": "password",
+                    "obscure": true,
+                    "validation": { "required": true, "minLength": 8 }
+                  },
+                  {
+                    "type": "button",
+                    "text": "Login",
+                    "variant": "primary",
+                    "action": {
+                      "type": "apiCall",
+                      "service": "AuthService",
+                      "endpoint": "login",
+                      "params": { "email": "${form.email}", "password": "${form.password}" },
+                      "onSuccess": {
+                        "type": "navigate",
+                        "route": "/home",
+                        "stateUpdate": { "user": "${response.user}", "token": "${response.token}" }
+                      },
+                      "onError": { "type": "showError", "message": "${response.message}" }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "home": {
+        "id": "home",
+        "title": "Dashboard",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "refreshable": true,
+        "children": [
+          { "type": "text", "text": "Welcome Back, ${state.user.name}", "style": "title1" },
+          {
+            "type": "section",
+            "title": "Featured Items",
+            "children": [
+              {
+                "type": "list",
+                "direction": "horizontal",
+                "dataSource": {
+                  "type": "apiCall",
+                  "service": "ContentService",
+                  "endpoint": "getItems",
+                  "params": { "category": "featured" }
+                },
+                "itemTemplate": {
+                  "type": "card",
+                  "children": [
+                    { "type": "image", "src": "${item.imageUrl}" },
+                    { "type": "text", "text": "${item.title}" },
+                    { "type": "button", "text": "View", "action": { "type": "navigate", "route": "/content/music", "params": { "id": "${item.id}" } } }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "section",
+            "title": "Recent Activity",
+            "children": [
+              {
+                "type": "list",
+                "direction": "vertical",
+                "dataSource": {
+                  "type": "apiCall",
+                  "service": "ContentService",
+                  "endpoint": "getItems",
+                  "params": { "category": "recent" }
+                },
+                "itemTemplate": {
+                  "type": "card",
+                  "children": [
+                    { "type": "image", "src": "${item.imageUrl}", "size": "small" },
+                    { "type": "text", "text": "${item.title}", "style": "body" },
+                    { "type": "chip", "label": "${item.category}" }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "music": {
+        "id": "music",
+        "title": "Content Library A",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "children": [
+          {
+            "type": "searchBar",
+            "placeholder": "Search items...",
+            "action": { "type": "updateState", "key": "searchQuery", "value": "${input}" },
+            "onSubmit": { "type": "apiCall", "service": "ContentService", "endpoint": "search", "params": { "query": "${state.searchQuery}" } }
+          },
+          {
+            "type": "grid",
+            "columns": 2,
+            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "music" } },
+            "itemTemplate": {
+              "type": "card",
+              "children": [
+                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
+                { "type": "text", "text": "${item.title}" },
+                { "type": "chip", "label": "${item.category}" }
+              ]
+            }
+          },
+          { "type": "floatingActionButton", "icon": "add", "action": { "type": "showDialog", "dialog": "createPlaylist" } }
+        ]
+      },
+      "podcasts": {
+        "id": "podcasts",
+        "title": "Content Library B",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "children": [
+          {
+            "type": "chipGroup",
+            "items": [ { "label": "All" }, { "label": "News" }, { "label": "Education" } ],
+            "onSelect": { "type": "updateState", "key": "filter", "value": "${selected.label}" }
+          },
+          {
+            "type": "list",
+            "direction": "vertical",
+            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "${state.filter}" } },
+            "itemTemplate": {
+              "type": "card",
+              "children": [
+                { "type": "image", "src": "${item.imageUrl}", "size": "small" },
+                { "type": "text", "text": "${item.title}" },
+                { "type": "chip", "label": "${item.category}" }
+              ]
+            }
+          }
+        ]
+      },
+      "ebooks": {
+        "id": "ebooks",
+        "title": "Content Library C",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "children": [
+          {
+            "type": "dropdown",
+            "label": "Sort",
+            "options": ["Recent", "Alphabetical"],
+            "onChange": { "type": "updateState", "key": "sortBy", "value": "${selected}" }
+          },
+          {
+            "type": "grid",
+            "columns": 2,
+            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "ebooks" } },
+            "itemTemplate": {
+              "type": "card",
+              "children": [
+                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
+                { "type": "text", "text": "${item.title}" },
+                { "type": "progressBar", "value": "${item.progress}", "max": 100 }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+  ,
+  "state": {
+    "global": {
+      "user": { "model": "User", "persistence": "secure", "default": null },
+      "authToken": { "type": "string", "persistence": "secure" },
+      "isLoading": { "type": "boolean", "persistence": "memory", "default": false }
+    },
+    "pageScoped": {
+      "home": {
+        "searchQuery": { "type": "string", "persistence": "session", "default": "" },
+        "featuredItems": { "type": "array", "persistence": "local" }
+      },
+      "music": {
+        "filter": { "type": "string", "default": "all" },
+        "sortBy": { "type": "string", "enum": ["recent", "alpha"], "persistence": "local" }
+      },
+      "podcasts": {
+        "selectedCategory": { "type": "string", "default": "" }
+      },
+      "ebooks": {
+        "readingProgress": { "type": "object", "persistence": "local" }
+      }
+    }
+  },
+  "theme": {
+    "tokens": {
+      "light": {
+        "primary": "#1DB954",
+        "onPrimary": "#000000",
+        "surface": "#FFFFFF",
+        "onSurface": "#121212",
+        "background": "#F8F9FA",
+        "error": "#FF0000"
+      },
+      "dark": {
+        "primary": "#1DB954",
+        "onPrimary": "#FFFFFF",
+        "surface": "#121212",
+        "onSurface": "#FFFFFF",
+        "background": "#000000",
+        "error": "#FF6B6B"
+      }
+    }
+  },
+  "typography": {
+    "largeTitle": { "fontSize": 34, "fontWeight": "bold", "lineHeight": 40 },
+    "title1": { "fontSize": 28, "fontWeight": "semibold", "lineHeight": 34 },
+    "body": { "fontSize": 17, "fontWeight": "regular", "lineHeight": 24 },
+    "caption": { "fontSize": 12, "fontWeight": "regular", "lineHeight": 16 }
+  },
+  "validationRules": {
+    "email": { "type": "regex", "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", "message": "Invalid email format" },
+    "required": { "type": "required", "message": "This field is required" },
+    "minLength": { "type": "minLength", "value": 8, "message": "Minimum 8 characters" },
+    "positiveNumber": { "type": "number", "min": 0, "max": 5, "message": "Rating between 0-5" }
+  }
+}

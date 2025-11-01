@@ -1,0 +1,156 @@
+{
+  "meta": {
+    "version": "1.0.1",
+    "description": "Personalized override for user with fast-scrolling preference - larger cards, top-placed search.",
+    "personalizationReason": "Based on analytics: high abandonment on music grid (small items), low engagement on bottom sections. Optimizations: enlarge grid to 3 columns, move search higher.",
+    "generatedBy": "AI-Optimizer",
+    "generatedAt": "2025-11-01T13:20:00Z",
+    "isPartial": true
+  },
+  "pagesUI": {
+    "pages": {
+      "home": {
+        "id": "home",
+        "title": "Dashboard",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "refreshable": true,
+        "children": [
+          { "type": "text", "text": "Welcome Back, ${state.user.name}", "style": "title1" },
+          {
+            "type": "section",
+            "title": "Recent Activity",
+            "children": [
+              {
+                "type": "list",
+                "direction": "vertical",
+                "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "recent" } },
+                "itemTemplate": {
+                  "type": "card",
+                  "size": "expanded",
+                  "children": [
+                    { "type": "image", "src": "${item.imageUrl}", "size": "small" },
+                    { "type": "text", "text": "${item.title}", "style": "body" },
+                    { "type": "chip", "label": "${item.category}" }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "section",
+            "title": "Featured Items",
+            "children": [
+              {
+                "type": "list",
+                "direction": "horizontal",
+                "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "featured" } },
+                "itemTemplate": {
+                  "type": "card",
+                  "size": "expanded",
+                  "children": [
+                    { "type": "image", "src": "${item.imageUrl}" },
+                    { "type": "text", "text": "${item.title}" },
+                    { "type": "button", "text": "View", "action": { "type": "navigate", "route": "/content/music", "params": { "id": "${item.id}" } } }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "music": {
+        "id": "music",
+        "title": "Content Library A",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "children": [
+          {
+            "type": "searchBar",
+            "placeholder": "Search items...",
+            "sticky": true,
+            "action": { "type": "updateState", "key": "searchQuery", "value": "${input}" },
+            "onSubmit": { "type": "apiCall", "service": "ContentService", "endpoint": "search", "params": { "query": "${state.searchQuery}" } }
+          },
+          {
+            "type": "chipGroup",
+            "items": [ { "label": "All" }, { "label": "Favorites" }, { "label": "Trending" }, { "label": "New" } ],
+            "defaultSelected": "Favorites",
+            "onSelect": { "type": "updateState", "key": "filter", "value": "${selected.label}" }
+          },
+          {
+            "type": "grid",
+            "columns": 3,
+            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "${state.filter}" } },
+            "itemTemplate": {
+              "type": "card",
+              "children": [
+                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
+                { "type": "text", "text": "${item.title}" },
+                { "type": "chip", "label": "${item.category}" }
+              ]
+            }
+          }
+        ]
+      },
+      "podcasts": {
+        "id": "podcasts",
+        "title": "Content Library B",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "children": [
+          {
+            "type": "chipGroup",
+            "items": [ { "label": "All" }, { "label": "News" }, { "label": "Education" } ],
+            "defaultSelected": "Education",
+            "onSelect": { "type": "updateState", "key": "filter", "value": "${selected.label}" }
+          },
+          {
+            "type": "list",
+            "direction": "vertical",
+            "itemHeight": "tall",
+            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "${state.filter}" } },
+            "itemTemplate": {
+              "type": "card",
+              "size": "expanded",
+              "children": [
+                { "type": "image", "src": "${item.imageUrl}", "size": "small" },
+                { "type": "text", "text": "${item.title}" },
+                { "type": "chip", "label": "${item.category}" }
+              ]
+            }
+          }
+        ]
+      },
+      "ebooks": {
+        "id": "ebooks",
+        "title": "Content Library C",
+        "scope": "authenticated",
+        "layout": "scroll",
+        "children": [
+          {
+            "type": "dropdown",
+            "label": "Sort",
+            "options": ["Progress", "Recent", "Alphabetical"],
+            "defaultSelected": "Progress",
+            "onChange": { "type": "updateState", "key": "sortBy", "value": "${selected}" }
+          },
+          {
+            "type": "grid",
+            "columns": 2,
+            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "ebooks" } },
+            "itemTemplate": {
+              "type": "card",
+              "size": "expanded",
+              "children": [
+                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
+                { "type": "text", "text": "${item.title}" },
+                { "type": "progressBar", "value": "${item.progress}", "max": 100, "color": "${item.progress > 50 ? theme.primary : theme.error}" }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
