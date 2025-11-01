@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { CanonicalErrorFilter } from './common/filters/canonical-error.filter';
 import IORedis from 'ioredis';
+import * as compression from 'compression';
 
 async function bootstrap() {
   // Shim Buffer.SlowBuffer for older libs expecting it (e.g., buffer-equal-constant-time)
@@ -23,10 +24,14 @@ async function bootstrap() {
   const { AppModule } = await import('./modules/app/app.module');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  // Enable gzip compression for JSON payloads
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const compression = require('compression');
-  app.use(compression());
+  // Enable response compression before any route/controller registration
+  app.use(
+    compression({
+      level: 6, // moderate compression for good balance
+      threshold: 1024, // only compress responses >= 1KB
+      // use default filter (checks Accept-Encoding); override if needed
+    }),
+  );
   app.enableCors();
   app.useGlobalFilters(new CanonicalErrorFilter());
   app.useGlobalPipes(new ValidationPipe({

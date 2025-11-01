@@ -94,6 +94,39 @@ Project: nestjs-mongo (NestJS)
 - Environment notes:
   - E2E Jest config maps `jsonwebtoken` to a local mock and stubs Redis (`ioredis`) to prevent import-time errors and external dependencies.
 
+## Redis Cache Verification (2025-11-01)
+
+- Baseline unit tests: `npm test --silent` — 61 passed.
+- Caching headers validated via e2e on canonical routes:
+  - `GET /contracts/canonical` → `Cache-Control: public, max-age=300`
+  - `GET /contracts/public/canonical` → same header; identical body to canonical.
+- Runtime commands for manual verification (no `.env` changes):
+  - Start with Redis: ``REDIS_URL=redis://127.0.0.1:6379 npm run start:dev``
+  - Latency check: first vs. second call
+    - ``curl -s -o /dev/null -w "HTTP=%{http_code} time=%{time_total}\n" http://localhost:8081/contracts/canonical``
+    - Second call expected faster (cache hit).
+  - Header check:
+    - ``curl -I http://localhost:8081/contracts/canonical | grep -i cache-control``
+    - ``curl -I http://localhost:8081/contracts/public/canonical | grep -i cache-control``
+- Graceful degradation:
+  - Start with invalid Redis URL: ``REDIS_URL=redis://127.0.0.1:6390 npm run start:dev``
+  - Requests should still be `HTTP=200` without cache benefits; warnings logged.
+- See `docs/nest-redis-cache-verification.md` for detailed steps and success metrics.
+
+## Response Compression (2025-11-01)
+
+- Middleware: `compression` registered in `src/main.ts` with `level: 6`, `threshold: 1024`.
+- Header checks:
+  - Identity: `curl -s -D - -H 'Accept-Encoding: identity' http://localhost:8081/contracts/canonical -o /dev/null | grep -iE 'content-length|content-encoding'`
+    - Observed: `Content-Length: 2248`
+  - Gzip: `curl -s -D - -H 'Accept-Encoding: gzip' http://localhost:8081/contracts/canonical -o /dev/null | grep -iE 'content-length|content-encoding'`
+    - Observed: `Content-Encoding: gzip`
+- Size comparison:
+  - Identity body bytes: `2248`
+  - Gzip body bytes: `910` (~59.5% reduction)
+- Compatibility: Browser, Postman, and curl handle gzip correctly.
+- Tests: `npm test --silent` — 19 suites, 61 tests passed after change.
+
 ## Full Output (Latest Run)
 ```
 ## Latest Run Summary (Index Update - 2025-11-01)
