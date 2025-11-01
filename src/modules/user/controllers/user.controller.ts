@@ -18,6 +18,7 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RoleGuard } from '../../auth/guards/role-auth.guard';
 import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Logger } from '@nestjs/common';
 import { UserDto } from '../dto/user.dto';
 import { ContractService } from '../../contract/services/contract.service';
 import { EventService } from '../../event/services/event.service';
@@ -27,6 +28,7 @@ import { UpdateUserContractDto } from '../dto/update-user-contract.dto';
 import { TrackingEventDto } from '../../event/dto/tracking-event.dto';
 import { UserSummaryDto } from '../dto/user-summary.dto';
 import { CacheService } from '../../../common/services/cache.service';
+import { ContractMergeService } from '../../contract/services/contract-merge.service';
 
 @ApiTags('users')
 @ApiBearerAuth('accessToken')
@@ -37,7 +39,10 @@ export class UserController {
     private readonly contractService: ContractService,
     private readonly eventService: EventService,
     private readonly cache: CacheService,
+    private readonly contractMerge: ContractMergeService,
   ) {}
+
+  private readonly logger = new Logger(UserController.name);
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
@@ -111,22 +116,56 @@ export class UserController {
     const cached = await this.cache.get<ContractDTO>(cacheKey);
     if (cached) return cached;
 
-    // Latest personalized; fallback to canonical
-    const doc = (await this.contractService.findLatestByUser(id))
-      || (await this.contractService.findLatestCanonical());
-    if (!doc) return null;
-    const createdAt = (doc as any).createdAt as Date | undefined;
-    const updatedAt = (doc as any).updatedAt as Date | undefined;
+    // Retrieve personalized and canonical contracts
+    const personalized = await this.contractService.findLatestByUser(id);
+    const canonical = await this.contractService.findLatestCanonical();
+    if (!personalized && !canonical) return null;
+
+    // If personalized exists, merge with canonical; else return canonical
+    try {
+      if (personalized && (personalized as any).userId) {
+        const mergedJson = this.contractMerge.mergeContracts(
+          (canonical as any)?.json ?? {},
+          (personalized as any)?.json ?? {},
+        );
+        const createdAtCanon = (canonical as any)?.createdAt as Date | undefined;
+        const updatedAtCanon = (canonical as any)?.updatedAt as Date | undefined;
+        const res: ContractDTO = {
+          id: (canonical as any)?._id?.toString?.() || '',
+          userId: id,
+          version: (canonical as any)?.version ?? (personalized as any)?.version,
+          json: mergedJson as Record<string, unknown>,
+          createdAt: createdAtCanon
+            ? createdAtCanon.toISOString()
+            : new Date().toISOString(),
+          updatedAt: updatedAtCanon
+            ? updatedAtCanon.toISOString()
+            : new Date().toISOString(),
+          meta: (canonical as any)?.meta ?? {},
+        };
+        await this.cache.set(cacheKey, res, 300);
+        return res;
+      }
+    } catch (err) {
+      this.logger.error(
+        `Contract merge failed for user ${id} (canonVer=${(canonical as any)?.version}, userVer=${(personalized as any)?.version})`,
+        (err as Error)?.stack ?? String(err),
+      );
+      // On error, gracefully degrade to canonical
+    }
+
+    // No personalized or merge errored: return canonical
+    const createdAt = (canonical as any)?.createdAt as Date | undefined;
+    const updatedAt = (canonical as any)?.updatedAt as Date | undefined;
     const res: ContractDTO = {
-      id: (doc as any)._id?.toString?.() || '',
+      id: (canonical as any)?._id?.toString?.() || '',
       userId: id,
-      version: (doc as any).version,
-      json: (doc as any).json as Record<string, unknown>,
+      version: (canonical as any)?.version ?? '',
+      json: ((canonical as any)?.json ?? {}) as Record<string, unknown>,
       createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),
       updatedAt: updatedAt ? updatedAt.toISOString() : new Date().toISOString(),
-      meta: (doc as any).meta ?? {},
+      meta: (canonical as any)?.meta ?? {},
     };
-    // Save to cache
     await this.cache.set(cacheKey, res, 300);
     return res;
   }

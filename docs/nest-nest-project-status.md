@@ -183,6 +183,11 @@ Limitations
   - `services/llm.service.ts` — Heuristic fallback that computes `eventType` counts and embeds into `analytics.eventCounts`; bumps patch version (`x.y.z → x.y.(z+1)`), defaults to `0.1.0` when invalid.
   - `services/gemini.service.ts` — Aggregates analytics (`eventTypeDistribution`, `errorRate`, pain points: rage-click, form-abandonment, error-pattern, long-dwell) and calls Gemini when configured.
   - Caching: analytics summaries cached under Redis key `llm:analytics:{userId}` with TTL 300 seconds.
+ - Shared helpers (extracted modules)
+   - `analytics/types.ts` and `analytics/helpers.ts` — Shared types and analytics functions used by `GeminiService` (`detectRageClicks`, `detectFormAbandonment`, `analyzeErrors`, `detectLongDwells`, `calculateComponentUsage`).
+   - `prompts/gemini.prompts.ts` — Prompt builders used by `GeminiService` (`buildSystemPrompt`, `buildUserPrompt`, `buildRetryPrompt`).
+   - `utils/json.ts` — Strict JSON utility (`parseJsonStrict`) used for provider responses.
+   - Note: duplicate class-local helpers were removed from `GeminiService` in favor of these modules to improve reuse and testability.
 - DTOs
   - `dto/generate-contract.dto.ts` — Input `userId`, optional `baseContract`, optional `version`.
 

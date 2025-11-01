@@ -2,16 +2,23 @@ import {
   Body,
   Controller,
   Get,
-  Param,
   Post,
   Request,
   UseGuards,
+  Query,
+  SetMetadata,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EventService } from '../services/event.service';
-import { CreateEventsBatchDto, EventDto } from '../dto/create-events.dto';
 import { InsertedCountDto } from '../dto/inserted-count.dto';
+import { RoleGuard } from '../../auth/guards/role-auth.guard';
+import {
+  CreateEventsBatchDto,
+  EventDto,
+  AggregateQueryDto,
+  AggregateResultDto,
+} from '../dto/index';
 
 @ApiTags('events')
 @ApiBearerAuth('accessToken')
@@ -40,5 +47,18 @@ export class EventController {
   })
   async createSingleEvent(@Body() body: EventDto, @Request() req: any) {
     return this.eventService.createBatch(req.user.userId, [body]);
+  }
+
+  @Get('aggregate')
+  @SetMetadata('roles', ['ADMIN'])
+  @UseGuards(JwtAuthGuard, RoleGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'Aggregate events statistics.',
+    type: AggregateResultDto,
+  })
+  async getAggregateEvents(@Query() query: AggregateQueryDto) {
+    const { page, timeRange = 'all', eventType } = query;
+    return this.eventService.aggregateByPage(page, timeRange as any, eventType);
   }
 }
