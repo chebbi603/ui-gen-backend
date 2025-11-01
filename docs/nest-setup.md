@@ -60,6 +60,14 @@ When `SEED_ENABLED=true`, the app seeds:
 
 Seeding is idempotent and skips in production.
 
+### Contracts from Disk (Development)
+- Canonical and personalized contracts can be loaded from disk during seeding:
+  - Canonical: `src/modules/app/data/canonical-contract-v1.json`
+  - Personalized: `src/modules/app/data/personalized-contract-example.json`
+- On startup, seeding updates the database and invalidates caches (`contracts:canonical`, `contracts:user:{id}`) so endpoints serve the latest content.
+- Edit these files and restart (`npm run start`) to iterate on contract definitions in development.
+- In production, set `SEED_ENABLED=false` and manage contracts via admin or LLM endpoints.
+
 ## CORS
 
 CORS is enabled globally. To restrict origins, update server bootstrap to pass options to `enableCors`.

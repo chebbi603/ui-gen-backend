@@ -9,6 +9,38 @@ Swagger: `http://localhost:8081/api`
 
 ---
 
+## Contracts — Quick Reference & Examples
+
+- Canonical (public)
+  - `GET /contracts/canonical` — latest canonical contract
+    - Example: `curl -s http://localhost:8081/contracts/canonical | jq -r '[.version, .json.meta.appName] | @tsv'`
+  - `GET /contracts/public/canonical` — alias of canonical
+    - Example: `curl -s http://localhost:8081/contracts/public/canonical | jq -r '[.version, .json.meta.appName] | @tsv'`
+
+- Merged (authenticated)
+  - `GET /users/:id/contract` — merges canonical + personalized for user
+    - Header: `Cache-Control: private, max-age=300`
+    - Example:
+      - `ACCESS_TOKEN=$(curl -s -X POST http://localhost:8081/auth/login -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"password123"}' | jq -r '.accessToken')`
+      - `USER_ID=$(curl -s http://localhost:8081/users/me -H "Authorization: Bearer $ACCESS_TOKEN" | jq -r '._id')`
+      - `curl -s http://localhost:8081/users/$USER_ID/contract -H "Authorization: Bearer $ACCESS_TOKEN" | jq -r '[ (.json.pagesUI.pages.music.children[] | select(.type=="grid") | .columns), (.json.pagesUI.bottomNavigation.items[0].label) ] | @tsv'`
+
+- Personalized snapshots (authenticated)
+  - `GET /contracts/user/:userId` — latest personalized snapshot stored in `UserContract`
+  - `POST /contracts/user/:userId` — upsert personalized snapshot (body: `{ contractId?, json }`)
+
+- Contract creation (authenticated)
+  - `POST /contracts` — create a contract record (canonical or user-targeted)
+  - `POST /users/:id/contract` — create a user-targeted contract in the main `Contract` collection
+
+- LLM generation (authenticated)
+  - `POST /llm/generate-contract` — generate an optimized contract from a base and record it under target `userId`
+  - `POST /gemini/generate-contract` — same flow via Gemini provider
+
+Notes
+- Caching keys: `contracts:canonical`, `contracts:user:{id}` with TTL 300s.
+- See `docs/contracts-behavior.md` for end-to-end behavior, storage model, and seeding.
+
 ## Health
 
 - `GET /ping`
@@ -26,7 +58,8 @@ Swagger: `http://localhost:8081/api`
 - `POST /auth/login`
   - Logs in and returns JWT.
   - Body: `{ "email": "user@example.com", "password": "secret123" }`
-  - Response: `{ "_id": "...", "role": "USER", "accessToken": "..." }`
+  - Response: `{ "_id": "...", "role": "USER", "username": "user", "name": "User Name", "accessToken": "...", "refreshToken": "..." }`
+  - Notes: `username` and `name` are included to allow clients to display user-facing identifiers immediately after login without an extra `/users/me` call.
 
 Notes:
 - Uses `LocalAuthGuard` for credential validation.

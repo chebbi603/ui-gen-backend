@@ -8,6 +8,8 @@ import { Event } from '../../event/entities/event.entity';
 import { ConfigService } from '@nestjs/config';
 import { UserContract } from '../../user-contract/entities/user-contract.entity';
 import { CacheService } from '../../../common/services/cache.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -41,6 +43,56 @@ export class SeedService implements OnApplicationBootstrap {
   }
 
   private async seed() {
+    // Attempt to load canonical and personalized contracts from disk
+    const canonicalCandidates = [
+      // When running from compiled dist
+      path.resolve(__dirname, '../data/canonical-contract-v1.json'),
+      // When running with ts-node/nest CLI in dev
+      path.resolve(process.cwd(), 'src/modules/app/data/canonical-contract-v1.json'),
+    ];
+    const personalizedCandidates = [
+      path.resolve(__dirname, '../data/personalized-contract-example.json'),
+      path.resolve(process.cwd(), 'src/modules/app/data/personalized-contract-example.json'),
+    ];
+    let canonicalJson: Record<string, unknown> | null = null;
+    let canonicalVersion = '1.0.0';
+    try {
+      const canonicalPath = canonicalCandidates.find((p) => fs.existsSync(p));
+      if (canonicalPath) {
+        const raw = fs.readFileSync(canonicalPath, 'utf8');
+        const parsed = JSON.parse(raw);
+        canonicalJson = parsed;
+        // Try to derive version from meta.version if present
+        const v = (parsed as any)?.meta?.version;
+        if (typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)) {
+          canonicalVersion = v;
+        }
+        this.logger.log(
+          `Loaded canonical contract from disk (version=${canonicalVersion})`,
+        );
+      } else {
+        this.logger.warn(
+          `Canonical contract file not found at any candidate path; using built-in seed`,
+        );
+      }
+    } catch (e: any) {
+      this.logger.warn(
+        `Failed to read canonical contract from disk: ${e?.message || e}`,
+      );
+    }
+    let personalizedJson: Record<string, unknown> | null = null;
+    try {
+      const personalizedPath = personalizedCandidates.find((p) => fs.existsSync(p));
+      if (personalizedPath) {
+        const raw = fs.readFileSync(personalizedPath, 'utf8');
+        personalizedJson = JSON.parse(raw);
+        this.logger.log('Loaded personalized contract override from disk');
+      }
+    } catch (e: any) {
+      this.logger.warn(
+        `Failed to read personalized contract from disk: ${e?.message || e}`,
+      );
+    }
     // Idempotent seed: create if missing
     const email = 'test@example.com';
     let user = await this.userModel.findOne({ email });
@@ -67,13 +119,13 @@ export class SeedService implements OnApplicationBootstrap {
       }
     }
 
-    let contract = await this.contractModel.findOne({ version: '1.0.0' });
+    let contract = await this.contractModel.findOne({ version: canonicalVersion });
     if (!contract) {
       contract = new this.contractModel({
-        json: {
+        json: canonicalJson ?? {
           meta: {
             appName: 'Demo Canonical App',
-            version: '1.0.0',
+            version: canonicalVersion,
             schemaVersion: '1.0.0',
             generatedAt: new Date().toISOString(),
             authors: ['seed'],
@@ -180,10 +232,12 @@ export class SeedService implements OnApplicationBootstrap {
             },
           },
         },
-        version: '1.0.0',
+        version: canonicalVersion,
         meta: {
-          name: 'Default App Contract',
-          description: 'Canonical UI config for testing',
+          name: canonicalJson ? 'Canonical Contract (disk)' : 'Default App Contract',
+          description: canonicalJson
+            ? 'Canonical UI config loaded from disk file'
+            : 'Canonical UI config for testing',
           author: 'seed',
           updatedAt: new Date(),
         },
@@ -192,13 +246,13 @@ export class SeedService implements OnApplicationBootstrap {
       await contract.save();
       // Clear canonical cache so new schema is served immediately
       await this.cache.del('contracts:canonical');
-      this.logger.log('Seeded default canonical contract v1.0.0');
+      this.logger.log(`Seeded canonical contract v${canonicalVersion} (${canonicalJson ? 'disk' : 'built-in'})`);
     } else {
       // Update existing canonical v1.0.0 to the optimized schema
-      contract.json = {
+      contract.json = canonicalJson ?? {
         meta: {
           appName: 'Demo Canonical App',
-          version: '1.0.0',
+          version: canonicalVersion,
           schemaVersion: '1.0.0',
           generatedAt: new Date().toISOString(),
           authors: ['seed'],
@@ -307,15 +361,17 @@ export class SeedService implements OnApplicationBootstrap {
       };
       contract.meta = {
         ...(contract.meta || {}),
-        name: 'Default App Contract',
-        description: 'Canonical UI config for testing',
+        name: canonicalJson ? 'Canonical Contract (disk)' : 'Default App Contract',
+        description: canonicalJson
+          ? 'Canonical UI config loaded from disk file'
+          : 'Canonical UI config for testing',
         author: 'seed',
         updatedAt: new Date(),
       };
       await contract.save();
       // Clear canonical cache so updated schema is served
       await this.cache.del('contracts:canonical');
-      this.logger.log('Updated canonical contract v1.0.0 to optimized schema');
+      this.logger.log(`Updated canonical contract v${canonicalVersion} (${canonicalJson ? 'disk' : 'built-in'})`);
     }
 
     // Seed a personalized user contract
@@ -327,7 +383,7 @@ export class SeedService implements OnApplicationBootstrap {
       await this.userContractModel.create({
         userId: user._id as MongooseTypes.ObjectId,
         contractId: contract._id as MongooseTypes.ObjectId,
-        json: {
+        json: personalizedJson ?? {
           screens: [
             {
               id: 'home',
@@ -338,7 +394,51 @@ export class SeedService implements OnApplicationBootstrap {
           ],
         },
       });
-      this.logger.log('Seeded personalized user contract');
+      this.logger.log(
+        `Seeded personalized user contract (${personalizedJson ? 'disk' : 'minimal'})`,
+      );
+    }
+
+    // Also seed a personalized contract in the main contracts collection (used by UserController merge)
+    const existingPersonalizedInContracts = await this.contractModel
+      .findOne({ userId: user._id })
+      .sort({ createdAt: -1 });
+    if (!existingPersonalizedInContracts) {
+      const pVersion = (personalizedJson as any)?.meta?.version;
+      await this.contractModel.create({
+        json: personalizedJson ?? {
+          pagesUI: {
+            pages: {
+              home: {
+                id: 'home',
+                title: 'Dashboard',
+                scope: 'authenticated',
+              },
+            },
+          },
+        },
+        version:
+          typeof pVersion === 'string' && /^\d+\.\d+\.\d+$/.test(pVersion)
+            ? pVersion
+            : '1.0.1',
+        meta: {
+          name: personalizedJson
+            ? 'User Personalized Contract (disk)'
+            : 'User Personalized Contract (minimal)',
+          description: personalizedJson
+            ? 'Partial override loaded from disk file'
+            : 'Basic personalized contract for testing',
+          author: 'seed',
+          updatedAt: new Date(),
+        },
+        userId: user._id as MongooseTypes.ObjectId,
+        createdBy: user._id as MongooseTypes.ObjectId,
+      });
+      // Invalidate cache for this user's merged contract if present
+      await this.cache.del(`contracts:user:${user._id.toString()}`);
+      this.logger.log(
+        `Seeded personalized contract in contracts collection (${personalizedJson ? 'disk' : 'minimal'})`,
+      );
     }
 
     const existingEvents = await this.eventModel.countDocuments({

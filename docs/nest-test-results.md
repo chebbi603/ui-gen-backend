@@ -2,11 +2,26 @@ Project: nestjs-mongo (NestJS)
 # Jest Test Results
 
 ## Latest Run Summary
-- Command: `npm test --silent`
-- Test Suites: 19 passed, 19 total
-- Tests: 61 passed, 61 total
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
 - Snapshots: 0 total
-- Time: ~5.0 s
+- Time: ~6.5 s
+
+## Latest Run Summary (Post Contract Cleanup)
+- Command: `npm run test`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.9 s
+
+## Latest Run Summary (ThemingAccessibility Addition)
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~7.3 s
+- Notes: Added global `theme` and `themingAccessibility` in canonical contract; backend tests remain green.
 
 ## Test Suites and What They Test
 
@@ -129,36 +144,79 @@ Project: nestjs-mongo (NestJS)
 
 ## Full Output (Latest Run)
 ```
-## Latest Run Summary (Index Update - 2025-11-01)
-- Command: `npm test --silent`
-- Test Suites: 19 passed, 19 total
-- Tests: 61 passed, 61 total
-- Snapshots: 0 total
-- Time: ~8.4 s
-
-### Notes
-- Added schema indexes to `User`, `Event`, and `Contract` entities.
-- No test regressions; processor validation behavior remains intact.
-- See `docs/nest-db-indexes.md` for details and verification steps.
-```
 > jest
 
 PASS  src/modules/auth/services/auth.service.spec.ts
 PASS  src/modules/user/services/user.service.spec.ts
 PASS  src/modules/queue/queue.service.spec.ts
-PASS  src/modules/queue/controllers/gemini.controller.spec.ts
+PASS  src/modules/queue/controllers/gemini.controller.spec.ts (5.9 s)
 PASS  src/modules/auth/strategies/local.strategy.spec.ts
 PASS  src/modules/auth/strategies/jwt.strategy.spec.ts
-PASS  src/modules/user/controllers/user.controller.spec.ts
-PASS  src/modules/contract/services/contract.service.spec.ts
+PASS  src/modules/contract/validation/contract-validator.spec.ts
+PASS  src/common/validators/contract.validator.spec.ts
+PASS  src/common/filters/canonical-error.filter.spec.ts
+PASS  src/modules/contract/services/contract-merge.service.spec.ts
+PASS  src/modules/auth/guards/role-auth.guard.spec.ts
 PASS  src/modules/contract/services/contract-validation.service.spec.ts
+PASS  src/modules/user/controllers/user.controller.spec.ts (6.1 s)
 PASS  src/modules/event/services/event.service.spec.ts
 PASS  src/modules/user-contract/services/user-contract.service.spec.ts
 PASS  src/modules/app/controllers/app.controller.spec.ts
 ... (remaining suites passed)
 
-Test Suites: 19 passed, 19 total
-Tests:       61 passed, 61 total
+Test Suites: 20 passed, 20 total
+Tests:       66 passed, 66 total
 Snapshots:   0 total
-Time:        ~5.0 s
+Time:        ~6.5 s
 ```
+## Latest Run Summary (Admin Builder & Endpoint)
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.6 s
+- Notes: Wired `AdminContractController` and `ContractBuilderService` into `ContractModule`. All suites green; no regressions.
+
+## Latest Run Summary (Part C: Flutter Parser Alignment)
+- Date: 2025-11-01
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~5.5 s
+- Notes:
+  - Updated `canonical-contract-v1.json` to align with Flutter parser:
+    - TextField placeholders and style token resolution.
+    - Disabled pagination for all static lists/grids.
+    - Added `dependencies` for state-bound text.
+    - Standardized deterministic dummy image URLs.
+    - Applied design-system spacing constants (8/16/24).
+  - No backend regressions detected; all suites green.
+
+## Latest Run Summary (Part D: Debug Logging & E2E Prep)
+- Date: 2025-11-01
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+
+## Latest Run Summary (Login SubmitForm Alignment)
+- Date: 2025-11-01
+- Command: `npm run test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.4 s
+- Notes:
+  - Updated canonical contract login flow:
+    - `action.type` → `action.action` for all actions.
+    - Login button uses `action: "submitForm"` with `service: "auth"`, `endpoint: "login"`.
+    - Email/password fields bind to `${state.login.email}` and `${state.login.password}`.
+    - `onError` now uses `params.message` for error display.
+  - All backend tests still pass; no regressions detected.
+- Snapshots: 0 total
+- Time: ~8.0 s
+- Notes:
+  - Added global Express middleware in `src/main.ts` to log all requests:
+    - Logs method, URL, sanitized headers (Authorization redacted), and body.
+  - Kept `CanonicalErrorFilter` active to return structured, detailed errors.
+  - No test failures; logging middleware is non-invasive for unit tests.

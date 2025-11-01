@@ -5,7 +5,7 @@
     "schemaVersion": "2.0.0",
     "description": "Multipurpose baseline contract for AI-driven UX thesis. Supports any app with content discovery, user auth, and personalized flows.",
     "authors": ["Thesis Researcher"],
-    "generatedAt": "2025-11-01T13:00:00Z",
+    "generatedAt": "2025-11-01T18:00:00Z",
     "minFlutterVersion": "3.7.0"
   },
   "dataModels": {
@@ -17,7 +17,12 @@
         "subtitle": { "type": "string", "required": false },
         "imageUrl": { "type": "string", "format": "uri", "required": false },
         "duration": { "type": "integer", "minimum": 0, "required": false },
-        "rating": { "type": "number", "minimum": 0, "maximum": 5, "required": false }
+        "rating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "required": false
+        }
       }
     },
     "Playlist": {
@@ -53,7 +58,11 @@
           ],
           "required": false
         },
-        "episodes": { "type": "array", "items": { "type": "string" }, "required": false }
+        "episodes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "required": false
+        }
       }
     },
     "Book": {
@@ -62,8 +71,25 @@
         "id": { "type": "string", "required": true },
         "title": { "type": "string", "required": true },
         "author": { "type": "string", "required": true },
-        "genre": { "type": "string", "enum": ["fiction", "non-fiction", "history", "science", "biography", "fantasy", "mystery"], "required": false },
-        "progress": { "type": "number", "minimum": 0, "maximum": 100, "required": false }
+        "genre": {
+          "type": "string",
+          "enum": [
+            "fiction",
+            "non-fiction",
+            "history",
+            "science",
+            "biography",
+            "fantasy",
+            "mystery"
+          ],
+          "required": false
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "required": false
+        }
       }
     },
     "User": {
@@ -76,7 +102,11 @@
           "type": "object",
           "required": false,
           "properties": {
-            "favoriteCategories": { "type": "array", "items": { "type": "string" }, "required": false }
+            "favoriteCategories": {
+              "type": "array",
+              "items": { "type": "string" },
+              "required": false
+            }
           }
         }
       }
@@ -142,21 +172,49 @@
   ],
   "pagesUI": {
     "routes": {
-      "/": { "pageId": "landing", "auth": false },
-      "/login": { "pageId": "login", "auth": false },
-      "/home": { "pageId": "home", "auth": true },
-      "/content/music": { "pageId": "music", "auth": true },
-      "/content/podcasts": { "pageId": "podcasts", "auth": true },
-      "/content/ebooks": { "pageId": "ebooks", "auth": true }
+      "/": {
+        "pageId": "landing",
+        "auth": false,
+        "description": "Public landing page"
+      },
+      "/login": {
+        "pageId": "login",
+        "auth": false,
+        "description": "Public login page"
+      },
+      "/home": {
+        "pageId": "home",
+        "auth": true,
+        "description": "Protected home page"
+      },
+      "/content/music": {
+        "pageId": "music",
+        "auth": true,
+        "description": "Protected music library"
+      },
+      "/content/podcasts": {
+        "pageId": "podcasts",
+        "auth": true,
+        "description": "Protected podcasts"
+      },
+      "/content/ebooks": {
+        "pageId": "ebooks",
+        "auth": true,
+        "description": "Protected ebooks"
+      }
     },
     "bottomNavigation": {
       "enabled": true,
       "authRequired": true,
       "items": [
         { "label": "Home", "icon": "home", "route": "/home" },
-        { "label": "Content A", "icon": "library_music", "route": "/content/music" },
-        { "label": "Content B", "icon": "mic", "route": "/content/podcasts" },
-        { "label": "Content C", "icon": "book", "route": "/content/ebooks" }
+        {
+          "label": "Music",
+          "icon": "library_music",
+          "route": "/content/music"
+        },
+        { "label": "Podcasts", "icon": "mic", "route": "/content/podcasts" },
+        { "label": "Ebooks", "icon": "book", "route": "/content/ebooks" }
       ]
     },
     "pages": {
@@ -165,11 +223,48 @@
         "title": "Welcome",
         "scope": "public",
         "layout": "center",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
-          { "type": "text", "text": "Discover Your Personalized Experience", "style": "largeTitle", "binding": null },
-          { "type": "text", "text": "This demo app adapts to your needs using AI.", "style": "body" },
-          { "type": "button", "text": "Get Started", "action": { "type": "navigate", "route": "/login" }, "variant": "primary", "size": "large" },
-          { "type": "text", "text": "Already have an account? Sign in.", "style": "caption", "action": { "type": "navigate", "route": "/login" } }
+          {
+            "type": "text",
+            "text": "Discover Your Personalized Experience",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 24,
+              "fontWeight": "bold"
+            }
+          },
+          {
+            "type": "text",
+            "text": "This demo app adapts to your needs using AI.",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 16,
+              "margin": { "top": 16 }
+            }
+          },
+          {
+            "type": "button",
+            "text": "Get Started",
+            "action": { "action": "navigate", "route": "/login" },
+            "style": {
+              "backgroundColor": "${theme.primary}",
+              "color": "${theme.onPrimary}",
+              "padding": { "all": 16 },
+              "borderRadius": 8,
+              "margin": { "top": 32 }
+            }
+          },
+          {
+            "type": "text",
+            "text": "Already have an account? Sign in.",
+            "style": {
+              "color": "${theme.primary}",
+              "fontSize": 14,
+              "margin": { "top": 16 }
+            },
+            "action": { "action": "navigate", "route": "/login" }
+          }
         ]
       },
       "login": {
@@ -177,43 +272,79 @@
         "title": "Sign In",
         "scope": "public",
         "layout": "center",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
             "type": "card",
+            "style": {
+              "backgroundColor": "${theme.surface}",
+              "padding": { "all": 16 },
+              "borderRadius": 12
+            },
             "children": [
               {
+                "type": "text",
+                "text": "Welcome Back",
+                "style": {
+                  "color": "${theme.onSurface}",
+                  "fontSize": 24,
+                  "fontWeight": "bold",
+                  "margin": { "bottom": 24 }
+                }
+              },
+              {
                 "type": "form",
-                "key": "loginForm",
+                "id": "loginForm",
                 "children": [
                   {
                     "type": "textField",
-                    "label": "Email",
-                    "key": "email",
-                    "validation": { "required": true, "pattern": "email", "message": "Valid email required" },
-                    "keyboard": "email"
+                    "id": "email",
+                    "placeholder": "Enter your email",
+                    "keyboard": "email",
+                    "binding": "${state.login.email}",
+                    "validation": { "required": true, "pattern": "email" },
+                    "style": {
+                      "margin": { "bottom": 16 },
+                      "fillColor": "${theme.surface}",
+                      "focusedBorderColor": "${theme.primary}",
+                      "hintStyle": { "color": "${theme.onSurface}" }
+                    }
                   },
                   {
                     "type": "textField",
-                    "label": "Password",
-                    "key": "password",
+                    "id": "password",
+                    "placeholder": "Enter your password",
                     "obscure": true,
-                    "validation": { "required": true, "minLength": 8 }
+                    "binding": "${state.login.password}",
+                    "validation": { "required": true, "minLength": 8 },
+                    "style": {
+                      "margin": { "bottom": 16 },
+                      "fillColor": "${theme.surface}",
+                      "focusedBorderColor": "${theme.primary}",
+                      "hintStyle": { "color": "${theme.onSurface}" }
+                    }
                   },
                   {
                     "type": "button",
                     "text": "Login",
-                    "variant": "primary",
                     "action": {
-                      "type": "apiCall",
-                      "service": "AuthService",
+                      "action": "submitForm",
+                      "service": "auth",
                       "endpoint": "login",
-                      "params": { "email": "${form.email}", "password": "${form.password}" },
-                      "onSuccess": {
-                        "type": "navigate",
-                        "route": "/home",
-                        "stateUpdate": { "user": "${response.user}", "token": "${response.token}" }
+                      "params": {
+                        "formId": "login"
                       },
-                      "onError": { "type": "showError", "message": "${response.message}" }
+                      "onSuccess": { "action": "navigate", "route": "/home" },
+                      "onError": {
+                        "action": "showError",
+                        "params": { "message": "Login failed" }
+                      }
+                    },
+                    "style": {
+                      "backgroundColor": "${theme.primary}",
+                      "color": "${theme.onPrimary}",
+                      "padding": { "all": 16 },
+                      "borderRadius": 8
                     }
                   }
                 ]
@@ -227,52 +358,187 @@
         "title": "Dashboard",
         "scope": "authenticated",
         "layout": "scroll",
-        "refreshable": true,
+        "style": {
+          "backgroundColor": "${theme.background}",
+          "padding": { "all": 16 }
+        },
         "children": [
-          { "type": "text", "text": "Welcome Back, ${state.user.name}", "style": "title1" },
           {
-            "type": "section",
-            "title": "Featured Items",
+            "type": "text",
+            "text": "Welcome Back,",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 24,
+              "fontWeight": "bold",
+              "margin": { "bottom": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "text": "${state.user.username}",
+            "dependencies": ["state.user.username"],
+            "style": {
+              "color": "${theme.primary}",
+              "fontSize": 24,
+              "fontWeight": "bold",
+              "margin": { "bottom": 24 }
+            }
+          },
+          {
+            "type": "card",
+            "style": {
+              "backgroundColor": "${theme.surface}",
+              "padding": { "all": 16 },
+              "margin": { "bottom": 16 },
+              "borderRadius": 12
+            },
             "children": [
               {
+                "type": "text",
+                "text": "Featured Items",
+                "style": {
+                  "color": "${theme.onSurface}",
+                  "fontSize": 18,
+                  "fontWeight": "semibold",
+                  "margin": { "bottom": 8 }
+                }
+              },
+              {
                 "type": "list",
+                "id": "featuredList",
                 "direction": "horizontal",
                 "dataSource": {
-                  "type": "apiCall",
-                  "service": "ContentService",
-                  "endpoint": "getItems",
-                  "params": { "category": "featured" }
+                  "type": "static",
+                  "data": [
+                    {
+                      "id": "f1",
+                      "title": "Featured Playlist",
+                      "imageUrl": "https://picsum.photos/120/120?random=featured_1",
+                      "category": "music"
+                    },
+                    {
+                      "id": "f2",
+                      "title": "New Podcast",
+                      "imageUrl": "https://picsum.photos/120/120?random=featured_2",
+                      "category": "podcasts"
+                    },
+                    {
+                      "id": "f3",
+                      "title": "Recommended Book",
+                      "imageUrl": "https://picsum.photos/120/120?random=featured_3",
+                      "category": "ebooks"
+                    }
+                  ],
+                  "pagination": { "enabled": false }
                 },
-                "itemTemplate": {
+                "itemBuilder": {
                   "type": "card",
+                  "style": {
+                    "width": 120,
+                    "margin": { "right": 8 },
+                    "borderRadius": 8
+                  },
                   "children": [
-                    { "type": "image", "src": "${item.imageUrl}" },
-                    { "type": "text", "text": "${item.title}" },
-                    { "type": "button", "text": "View", "action": { "type": "navigate", "route": "/content/music", "params": { "id": "${item.id}" } } }
+                    {
+                      "type": "image",
+                      "src": "${item.imageUrl}",
+                      "width": 120,
+                      "height": 120,
+                      "borderRadius": 8
+                    },
+                    {
+                      "type": "text",
+                      "text": "${item.title}",
+                      "style": {
+                        "color": "${theme.onSurface}",
+                        "fontSize": 14,
+                        "margin": { "top": 8 }
+                      },
+                      "maxLines": 1
+                    },
+                    {
+                      "type": "chip",
+                      "label": "${item.category}",
+                      "style": { "color": "${theme.primary}" }
+                    }
                   ]
                 }
               }
             ]
           },
           {
-            "type": "section",
-            "title": "Recent Activity",
+            "type": "card",
+            "style": {
+              "backgroundColor": "${theme.surface}",
+              "padding": { "all": 16 },
+              "margin": { "bottom": 16 },
+              "borderRadius": 12
+            },
             "children": [
               {
+                "type": "text",
+                "text": "Recent Activity",
+                "style": {
+                  "color": "${theme.onSurface}",
+                  "fontSize": 18,
+                  "fontWeight": "semibold",
+                  "margin": { "bottom": 8 }
+                }
+              },
+              {
                 "type": "list",
-                "direction": "vertical",
+                "id": "recentList",
                 "dataSource": {
-                  "type": "apiCall",
-                  "service": "ContentService",
-                  "endpoint": "getItems",
-                  "params": { "category": "recent" }
+                  "type": "static",
+                  "data": [
+                    {
+                      "id": "r1",
+                      "title": "Track Played",
+                      "subtitle": "2 hours ago",
+                      "category": "music"
+                    },
+                    {
+                      "id": "r2",
+                      "title": "Episode Listened",
+                      "subtitle": "Today",
+                      "category": "podcasts"
+                    },
+                    {
+                      "id": "r3",
+                      "title": "Book Read",
+                      "subtitle": "In progress",
+                      "category": "ebooks"
+                    }
+                  ],
+                  "pagination": { "enabled": false }
                 },
-                "itemTemplate": {
-                  "type": "card",
+                "itemBuilder": {
+                  "type": "row",
+                  "style": { "padding": { "vertical": 8 } },
                   "children": [
-                    { "type": "image", "src": "${item.imageUrl}", "size": "small" },
-                    { "type": "text", "text": "${item.title}", "style": "body" },
-                    { "type": "chip", "label": "${item.category}" }
+                    {
+                      "type": "text",
+                      "text": "${item.title}",
+                      "style": {
+                        "color": "${theme.onSurface}",
+                        "fontSize": 16,
+                        "flex": 3
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "${item.subtitle}",
+                      "style": {
+                        "color": "${theme.onSurface}",
+                        "fontSize": 12,
+                        "flex": 2
+                      }
+                    },
+                    {
+                      "type": "chip",
+                      "label": "${item.category}",
+                      "style": { "color": "${theme.primary}" }
+                    }
                   ]
                 }
               }
@@ -285,27 +551,94 @@
         "title": "Content Library A",
         "scope": "authenticated",
         "layout": "scroll",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
             "type": "searchBar",
-            "placeholder": "Search items...",
-            "action": { "type": "updateState", "key": "searchQuery", "value": "${input}" },
-            "onSubmit": { "type": "apiCall", "service": "ContentService", "endpoint": "search", "params": { "query": "${state.searchQuery}" } }
+            "id": "musicSearch",
+            "placeholder": "Search music...",
+            "action": {
+              "type": "updateState",
+              "key": "searchQuery.music",
+              "value": "${input}"
+            },
+            "style": { "margin": { "bottom": 16 } }
           },
           {
-            "type": "grid",
-            "columns": 2,
-            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "music" } },
-            "itemTemplate": {
-              "type": "card",
-              "children": [
-                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
-                { "type": "text", "text": "${item.title}" },
-                { "type": "chip", "label": "${item.category}" }
-              ]
+            "type": "text",
+            "text": "Your Library",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 18,
+              "fontWeight": "semibold",
+              "margin": { "bottom": 8 }
             }
           },
-          { "type": "floatingActionButton", "icon": "add", "action": { "type": "showDialog", "dialog": "createPlaylist" } }
+          {
+            "type": "list",
+            "id": "musicList",
+            "dataSource": {
+              "type": "static",
+              "data": [
+                {
+                  "id": "m1",
+                  "title": "Track 1",
+                  "subtitle": "Artist A",
+                  "imageUrl": "https://via.placeholder.com/60x60/1DB954?text=Music_1",
+                  "category": "music"
+                },
+                {
+                  "id": "m2",
+                  "title": "Track 2",
+                  "subtitle": "Artist B",
+                  "imageUrl": "https://via.placeholder.com/60x60/1DB954?text=Music_2",
+                  "category": "music"
+                },
+                {
+                  "id": "m3",
+                  "title": "Album Track",
+                  "subtitle": "From Album C",
+                  "imageUrl": "https://via.placeholder.com/60x60/1DB954?text=Music_ALB",
+                  "category": "music"
+                }
+              ],
+              "pagination": { "enabled": false }
+            },
+            "itemBuilder": {
+              "type": "row",
+              "style": { "padding": { "vertical": 8 } },
+              "children": [
+                {
+                  "type": "image",
+                  "src": "${item.imageUrl}",
+                  "width": 60,
+                  "height": 60,
+                  "borderRadius": 4,
+                  "margin": { "right": 8 }
+                },
+                {
+                  "type": "column",
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "${item.title}",
+                      "style": { "color": "${theme.onSurface}", "fontSize": 16 }
+                    },
+                    {
+                      "type": "text",
+                      "text": "${item.subtitle}",
+                      "style": { "color": "${theme.onSurface}", "fontSize": 14 }
+                    },
+                    {
+                      "type": "chip",
+                      "label": "${item.category}",
+                      "style": { "color": "${theme.primary}" }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         ]
       },
       "podcasts": {
@@ -313,22 +646,82 @@
         "title": "Content Library B",
         "scope": "authenticated",
         "layout": "scroll",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
-            "type": "chipGroup",
-            "items": [ { "label": "All" }, { "label": "News" }, { "label": "Education" } ],
-            "onSelect": { "type": "updateState", "key": "filter", "value": "${selected.label}" }
+            "type": "text",
+            "text": "Trending Podcasts",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 18,
+              "fontWeight": "semibold",
+              "margin": { "bottom": 16 }
+            }
           },
           {
-            "type": "list",
-            "direction": "vertical",
-            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "${state.filter}" } },
-            "itemTemplate": {
+            "type": "grid",
+            "id": "podcastGrid",
+            "columns": 2,
+            "dataSource": {
+              "type": "static",
+              "data": [
+                {
+                  "id": "p1",
+                  "title": "Daily News",
+                  "imageUrl": "https://via.placeholder.com/150x150/34C759?text=Podcasts_1",
+                  "category": "news"
+                },
+                {
+                  "id": "p2",
+                  "title": "Tech Talk",
+                  "imageUrl": "https://via.placeholder.com/150x150/34C759?text=Podcasts_2",
+                  "category": "technology"
+                },
+                {
+                  "id": "p3",
+                  "title": "Story Time",
+                  "imageUrl": "https://via.placeholder.com/150x150/34C759?text=Podcasts_3",
+                  "category": "entertainment"
+                },
+                {
+                  "id": "p4",
+                  "title": "Health Tips",
+                  "imageUrl": "https://via.placeholder.com/150x150/34C759?text=Podcasts_4",
+                  "category": "health"
+                }
+              ],
+              "pagination": { "enabled": false }
+            },
+            "itemBuilder": {
               "type": "card",
+              "style": {
+                "margin": { "right": 8, "bottom": 8 },
+                "borderRadius": 8,
+                "padding": { "all": 8 }
+              },
               "children": [
-                { "type": "image", "src": "${item.imageUrl}", "size": "small" },
-                { "type": "text", "text": "${item.title}" },
-                { "type": "chip", "label": "${item.category}" }
+                {
+                  "type": "image",
+                  "src": "${item.imageUrl}",
+                  "width": 150,
+                  "height": 150,
+                  "borderRadius": 8
+                },
+                {
+                  "type": "text",
+                  "text": "${item.title}",
+                  "style": {
+                    "color": "${theme.onSurface}",
+                    "fontSize": 14,
+                    "margin": { "top": 4 }
+                  },
+                  "alignment": "center"
+                },
+                {
+                  "type": "chip",
+                  "label": "${item.category}",
+                  "style": { "color": "${theme.primary}" }
+                }
               ]
             }
           }
@@ -339,55 +732,174 @@
         "title": "Content Library C",
         "scope": "authenticated",
         "layout": "scroll",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
-            "type": "dropdown",
-            "label": "Sort",
-            "options": ["Recent", "Alphabetical"],
-            "onChange": { "type": "updateState", "key": "sortBy", "value": "${selected}" }
+            "type": "text",
+            "text": "Your Library",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 18,
+              "fontWeight": "semibold",
+              "margin": { "bottom": 16 }
+            }
           },
           {
-            "type": "grid",
-            "columns": 2,
-            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "ebooks" } },
-            "itemTemplate": {
+            "type": "list",
+            "id": "ebookList",
+            "dataSource": {
+              "type": "static",
+              "data": [
+                {
+                  "id": "e1",
+                  "title": "Book 1: Fiction",
+                  "author": "Author A",
+                  "progress": 50,
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500?text=Book_1"
+                },
+                {
+                  "id": "e2",
+                  "title": "Book 2: Mystery",
+                  "author": "Author B",
+                  "progress": 0,
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500?text=Book_2"
+                },
+                {
+                  "id": "e3",
+                  "title": "Book 3: Sci-Fi",
+                  "author": "Author C",
+                  "progress": 75,
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500?text=Book_3"
+                }
+              ],
+              "pagination": { "enabled": false }
+            },
+            "itemBuilder": {
               "type": "card",
+              "style": {
+                "padding": { "all": 16 },
+                "margin": { "bottom": 8 },
+                "borderRadius": 8
+              },
               "children": [
-                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
-                { "type": "text", "text": "${item.title}" },
-                { "type": "progressBar", "value": "${item.progress}", "max": 100 }
+                {
+                  "type": "row",
+                  "children": [
+                    {
+                      "type": "image",
+                      "src": "${item.imageUrl}",
+                      "width": 80,
+                      "height": 120,
+                      "borderRadius": 4,
+                      "margin": { "right": 8 }
+                    },
+                    {
+                      "type": "column",
+                      "flex": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "text": "${item.title}",
+                          "style": {
+                            "color": "${theme.onSurface}",
+                            "fontSize": 16
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "text": "by ${item.author}",
+                          "style": {
+                            "color": "${theme.onSurface}",
+                            "fontSize": 14
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "text": "${item.progress}% complete",
+                          "style": {
+                            "color": "${theme.primary}",
+                            "fontSize": 14
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "progressIndicator",
+                      "value": "${item.progress / 100}",
+                      "max": 1,
+                      "style": {
+                        "color": "${theme.primary}",
+                        "margin": { "top": 8 }
+                      }
+                    }
+                  ]
+                }
               ]
             }
           }
         ]
       }
     }
-  }
-  ,
+  },
   "state": {
     "global": {
-      "user": { "model": "User", "persistence": "secure", "default": null },
-      "authToken": { "type": "string", "persistence": "secure" },
-      "isLoading": { "type": "boolean", "persistence": "memory", "default": false }
+      "user": {
+        "model": "User",
+        "persistence": "secure",
+        "default": null
+      },
+      "authToken": {
+        "type": "string",
+        "persistence": "secure",
+        "default": null
+      },
+      "isLoading": {
+        "type": "boolean",
+        "persistence": "memory",
+        "default": false
+      },
+      "sessionId": {
+        "type": "string",
+        "persistence": "local",
+        "default": ""
+      },
+      "theme": { "type": "string", "persistence": "local", "default": "light" }
     },
     "pageScoped": {
       "home": {
-        "searchQuery": { "type": "string", "persistence": "session", "default": "" },
-        "featuredItems": { "type": "array", "persistence": "local" }
+        "searchQuery": {
+          "type": "string",
+          "persistence": "session",
+          "default": ""
+        },
+        "featuredItems": {
+          "type": "array",
+          "persistence": "local",
+          "default": []
+        }
       },
       "music": {
         "filter": { "type": "string", "default": "all" },
-        "sortBy": { "type": "string", "enum": ["recent", "alpha"], "persistence": "local" }
+        "sortBy": {
+          "type": "string",
+          "enum": ["recent", "alpha"],
+          "persistence": "local",
+          "default": "recent"
+        }
       },
       "podcasts": {
         "selectedCategory": { "type": "string", "default": "" }
       },
       "ebooks": {
-        "readingProgress": { "type": "object", "persistence": "local" }
+        "readingProgress": {
+          "type": "object",
+          "persistence": "local",
+          "default": {}
+        }
       }
     }
   },
-  "theme": {
+  "themingAccessibility": {
     "tokens": {
       "light": {
         "primary": "#1DB954",
@@ -395,7 +907,8 @@
         "surface": "#FFFFFF",
         "onSurface": "#121212",
         "background": "#F8F9FA",
-        "error": "#FF0000"
+        "error": "#FF0000",
+        "success": "#34C759"
       },
       "dark": {
         "primary": "#1DB954",
@@ -403,20 +916,39 @@
         "surface": "#121212",
         "onSurface": "#FFFFFF",
         "background": "#000000",
-        "error": "#FF6B6B"
+        "error": "#FF6B6B",
+        "success": "#34C759"
       }
-    }
-  },
-  "typography": {
-    "largeTitle": { "fontSize": 34, "fontWeight": "bold", "lineHeight": 40 },
-    "title1": { "fontSize": 28, "fontWeight": "semibold", "lineHeight": 34 },
-    "body": { "fontSize": 17, "fontWeight": "regular", "lineHeight": 24 },
-    "caption": { "fontSize": 12, "fontWeight": "regular", "lineHeight": 16 }
+    },
+    "typography": {
+      "largeTitle": { "fontSize": 34, "fontWeight": "bold", "lineHeight": 40 },
+      "title1": { "fontSize": 28, "fontWeight": "semibold", "lineHeight": 34 },
+      "body": { "fontSize": 17, "fontWeight": "regular", "lineHeight": 24 },
+      "caption": { "fontSize": 12, "fontWeight": "regular", "lineHeight": 16 }
+    },
+    "accessibility": {
+      "highContrast": false,
+      "prefersReducedMotion": true
+    },
+    "defaultTheme": "light"
   },
   "validationRules": {
-    "email": { "type": "regex", "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", "message": "Invalid email format" },
+    "email": {
+      "type": "regex",
+      "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+      "message": "Invalid email format"
+    },
     "required": { "type": "required", "message": "This field is required" },
-    "minLength": { "type": "minLength", "value": 8, "message": "Minimum 8 characters" },
-    "positiveNumber": { "type": "number", "min": 0, "max": 5, "message": "Rating between 0-5" }
+    "minLength": {
+      "type": "minLength",
+      "value": 8,
+      "message": "Minimum 8 characters"
+    },
+    "positiveNumber": {
+      "type": "number",
+      "min": 0,
+      "max": 5,
+      "message": "Rating between 0-5"
+    }
   }
 }

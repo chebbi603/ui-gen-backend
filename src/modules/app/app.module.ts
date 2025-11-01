@@ -33,7 +33,7 @@ import { CacheService } from '../../common/services/cache.service';
         NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
         PORT: Joi.number().port().optional(),
         MONGO_URL: Joi.string().uri({ scheme: ['mongodb', 'mongodb+srv', 'http', 'https'] }).required(),
-        MONGO_DATABASE_NAME: Joi.string().min(1).required(),
+        MONGO_DATABASE_NAME: Joi.string().min(1).optional(),
         JWT_SECRET: Joi.string().min(32).when('NODE_ENV', {
           is: 'production',
           then: Joi.required(),

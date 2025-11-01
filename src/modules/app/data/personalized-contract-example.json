@@ -4,8 +4,14 @@
     "description": "Personalized override for user with fast-scrolling preference - larger cards, top-placed search.",
     "personalizationReason": "Based on analytics: high abandonment on music grid (small items), low engagement on bottom sections. Optimizations: enlarge grid to 3 columns, move search higher.",
     "generatedBy": "AI-Optimizer",
-    "generatedAt": "2025-11-01T13:20:00Z",
-    "isPartial": true
+    "generatedAt": "2025-11-01T18:10:00Z",
+    "isPartial": true,
+    "targetUser": "demo1",
+    "uxHeuristics": [
+      "Increased visibility (larger grids)",
+      "Reduced cognitive load (filter chips)",
+      "Personal relevance (progress sorting)"
+    ]
   },
   "pagesUI": {
     "pages": {
@@ -14,44 +20,192 @@
         "title": "Dashboard",
         "scope": "authenticated",
         "layout": "scroll",
-        "refreshable": true,
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
-          { "type": "text", "text": "Welcome Back, ${state.user.name}", "style": "title1" },
           {
-            "type": "section",
-            "title": "Recent Activity",
+            "type": "text",
+            "text": "Welcome Back, ${state.user.name}",
+            "style": {
+              "color": "${theme.onSurface}",
+              "fontSize": 24,
+              "fontWeight": "bold",
+              "margin": { "bottom": 32 }
+            }
+          },
+          {
+            "type": "card",
+            "style": {
+              "backgroundColor": "${theme.surface}",
+              "padding": { "all": 16 },
+              "margin": { "bottom": 16 },
+              "borderRadius": 12
+            },
             "children": [
               {
+                "type": "text",
+                "text": "Recent Activity",
+                "style": {
+                  "color": "${theme.onSurface}",
+                  "fontSize": 18,
+                  "fontWeight": "semibold",
+                  "margin": { "bottom": 8 }
+                }
+              },
+              {
                 "type": "list",
+                "id": "recentList",
                 "direction": "vertical",
-                "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "recent" } },
-                "itemTemplate": {
+                "dataSource": {
+                  "type": "static",
+                  "data": [
+                    {
+                      "id": "pr1",
+                      "title": "Personalized Track",
+                      "imageUrl": "https://via.placeholder.com/60x60/1DB954/FFFFFF?text=PR",
+                      "category": "music"
+                    },
+                    {
+                      "id": "pr2",
+                      "title": "Recommended Podcast",
+                      "imageUrl": "https://via.placeholder.com/60x60/34C759/FFFFFF?text=PR",
+                      "category": "podcasts"
+                    },
+                    {
+                      "id": "pr3",
+                      "title": "Suggested Book",
+                      "imageUrl": "https://via.placeholder.com/60x60/FF9500/FFFFFF?text=PR",
+                      "category": "ebooks"
+                    }
+                  ]
+                },
+                "itemBuilder": {
                   "type": "card",
-                  "size": "expanded",
+                  "style": { "padding": { "all": 12 }, "borderRadius": 8 },
                   "children": [
-                    { "type": "image", "src": "${item.imageUrl}", "size": "small" },
-                    { "type": "text", "text": "${item.title}", "style": "body" },
-                    { "type": "chip", "label": "${item.category}" }
+                    {
+                      "type": "row",
+                      "children": [
+                        {
+                          "type": "image",
+                          "src": "${item.imageUrl}",
+                          "width": 60,
+                          "height": 60,
+                          "borderRadius": 4,
+                          "margin": { "right": 12 }
+                        },
+                        {
+                          "type": "text",
+                          "text": "${item.title}",
+                          "style": {
+                            "color": "${theme.onSurface}",
+                            "fontSize": 16,
+                            "flex": 1
+                          }
+                        },
+                        {
+                          "type": "chip",
+                          "label": "${item.category}",
+                          "style": { "color": "${theme.primary}" }
+                        }
+                      ]
+                    }
                   ]
                 }
               }
             ]
           },
           {
-            "type": "section",
-            "title": "Featured Items",
+            "type": "card",
+            "style": {
+              "backgroundColor": "${theme.surface}",
+              "padding": { "all": 16 },
+              "margin": { "bottom": 16 },
+              "borderRadius": 12
+            },
             "children": [
               {
+                "type": "text",
+                "text": "Featured Items",
+                "style": {
+                  "color": "${theme.onSurface}",
+                  "fontSize": 18,
+                  "fontWeight": "semibold",
+                  "margin": { "bottom": 8 }
+                }
+              },
+              {
                 "type": "list",
+                "id": "featuredList",
                 "direction": "horizontal",
-                "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "featured" } },
-                "itemTemplate": {
+                "dataSource": {
+                  "type": "static",
+                  "data": [
+                    {
+                      "id": "pf1",
+                      "title": "AI-Recommended Playlist",
+                      "imageUrl": "https://via.placeholder.com/120x120/1DB954/FFFFFF?text=AI-PL",
+                      "category": "music"
+                    },
+                    {
+                      "id": "pf2",
+                      "title": "Top Podcast",
+                      "imageUrl": "https://via.placeholder.com/120x120/34C759/FFFFFF?text=AI-Pod",
+                      "category": "podcasts"
+                    },
+                    {
+                      "id": "pf3",
+                      "title": "Personal Book Pick",
+                      "imageUrl": "https://via.placeholder.com/120x120/FF9500/FFFFFF?text=AI-B",
+                      "category": "ebooks"
+                    }
+                  ]
+                },
+                "itemBuilder": {
                   "type": "card",
-                  "size": "expanded",
+                  "style": {
+                    "width": 140,
+                    "margin": { "right": 8 },
+                    "borderRadius": 12
+                  },
                   "children": [
-                    { "type": "image", "src": "${item.imageUrl}" },
-                    { "type": "text", "text": "${item.title}" },
-                    { "type": "button", "text": "View", "action": { "type": "navigate", "route": "/content/music", "params": { "id": "${item.id}" } } }
+                    {
+                      "type": "image",
+                      "src": "${item.imageUrl}",
+                      "width": 140,
+                      "height": 140,
+                      "borderRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "text": "${item.title}",
+                      "style": {
+                        "color": "${theme.onSurface}",
+                        "fontSize": 14,
+                        "margin": { "top": 4 }
+                      },
+                      "maxLines": 1
+                    },
+                    {
+                      "type": "chip",
+                      "label": "${item.category}",
+                      "style": { "color": "${theme.primary}" }
+                    },
+                    {
+                      "type": "button",
+                      "text": "View",
+                      "action": {
+                        "type": "navigate",
+                        "route": "/content/music"
+                      },
+                      "style": {
+                        "backgroundColor": "${theme.primary}",
+                        "color": "${theme.onPrimary}",
+                        "padding": { "horizontal": 8, "vertical": 4 },
+                        "fontSize": 12,
+                        "borderRadius": 4,
+                        "margin": { "top": 4 }
+                      }
+                    }
                   ]
                 }
               }
@@ -64,30 +218,143 @@
         "title": "Content Library A",
         "scope": "authenticated",
         "layout": "scroll",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
             "type": "searchBar",
             "placeholder": "Search items...",
             "sticky": true,
-            "action": { "type": "updateState", "key": "searchQuery", "value": "${input}" },
-            "onSubmit": { "type": "apiCall", "service": "ContentService", "endpoint": "search", "params": { "query": "${state.searchQuery}" } }
+            "action": {
+              "type": "updateState",
+              "key": "searchQuery",
+              "value": "${input}"
+            },
+            "style": { "margin": { "bottom": 16 } }
           },
           {
-            "type": "chipGroup",
-            "items": [ { "label": "All" }, { "label": "Favorites" }, { "label": "Trending" }, { "label": "New" } ],
-            "defaultSelected": "Favorites",
-            "onSelect": { "type": "updateState", "key": "filter", "value": "${selected.label}" }
+            "type": "row",
+            "style": { "margin": { "bottom": 16 } },
+            "children": [
+              {
+                "type": "chip",
+                "label": "All",
+                "selected": "${state.filter == 'All'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "All"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "Favorites",
+                "selected": "${state.filter == 'Favorites'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "Favorites"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "Trending",
+                "selected": "${state.filter == 'Trending'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "Trending"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "New",
+                "selected": "${state.filter == 'New'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "New"
+                }
+              }
+            ]
           },
           {
             "type": "grid",
             "columns": 3,
-            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "${state.filter}" } },
-            "itemTemplate": {
+            "id": "musicGrid",
+            "dataSource": {
+              "type": "static",
+              "data": [
+                {
+                  "id": "pm1",
+                  "title": "Personal Track 1",
+                  "imageUrl": "https://via.placeholder.com/100x100/1DB954/FFFFFF?text=MT1",
+                  "category": "music"
+                },
+                {
+                  "id": "pm2",
+                  "title": "Personal Track 2",
+                  "imageUrl": "https://via.placeholder.com/100x100/1DB954/FFFFFF?text=MT2",
+                  "category": "music"
+                },
+                {
+                  "id": "pm3",
+                  "title": "Trending Hit",
+                  "imageUrl": "https://via.placeholder.com/100x100/1DB954/FFFFFF?text=Trend",
+                  "category": "music"
+                },
+                {
+                  "id": "pm4",
+                  "title": "New Release",
+                  "imageUrl": "https://via.placeholder.com/100x100/1DB954/FFFFFF?text=New",
+                  "category": "music"
+                },
+                {
+                  "id": "pm5",
+                  "title": "Favorite Album",
+                  "imageUrl": "https://via.placeholder.com/100x100/1DB954/FFFFFF?text=Fav",
+                  "category": "music"
+                },
+                {
+                  "id": "pm6",
+                  "title": "Discovery Mix",
+                  "imageUrl": "https://via.placeholder.com/100x100/1DB954/FFFFFF?text=Mix",
+                  "category": "music"
+                }
+              ]
+            },
+            "itemBuilder": {
               "type": "card",
+              "style": {
+                "margin": { "bottom": 8 },
+                "borderRadius": 8,
+                "padding": { "all": 8 }
+              },
               "children": [
-                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
-                { "type": "text", "text": "${item.title}" },
-                { "type": "chip", "label": "${item.category}" }
+                {
+                  "type": "image",
+                  "src": "${item.imageUrl}",
+                  "width": 100,
+                  "height": 100,
+                  "borderRadius": 8
+                },
+                {
+                  "type": "text",
+                  "text": "${item.title}",
+                  "style": {
+                    "color": "${theme.onSurface}",
+                    "fontSize": 14,
+                    "margin": { "top": 4 }
+                  },
+                  "maxLines": 1
+                },
+                {
+                  "type": "chip",
+                  "label": "${item.category}",
+                  "style": { "color": "${theme.primary}" }
+                }
               ]
             }
           }
@@ -98,25 +365,123 @@
         "title": "Content Library B",
         "scope": "authenticated",
         "layout": "scroll",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
-            "type": "chipGroup",
-            "items": [ { "label": "All" }, { "label": "News" }, { "label": "Education" } ],
-            "defaultSelected": "Education",
-            "onSelect": { "type": "updateState", "key": "filter", "value": "${selected.label}" }
+            "type": "row",
+            "style": { "margin": { "bottom": 16 } },
+            "children": [
+              {
+                "type": "chip",
+                "label": "All",
+                "selected": "${state.filter == 'All'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "All"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "News",
+                "selected": "${state.filter == 'News'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "News"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "Education",
+                "selected": "${state.filter == 'Education'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "filter",
+                  "value": "Education"
+                }
+              }
+            ]
           },
           {
             "type": "list",
+            "id": "podcastList",
             "direction": "vertical",
             "itemHeight": "tall",
-            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "${state.filter}" } },
-            "itemTemplate": {
+            "dataSource": {
+              "type": "static",
+              "data": [
+                {
+                  "id": "pp1",
+                  "title": "Personal News Podcast",
+                  "imageUrl": "https://via.placeholder.com/80x80/34C759/FFFFFF?text=PN",
+                  "category": "news"
+                },
+                {
+                  "id": "pp2",
+                  "title": "Education Series",
+                  "imageUrl": "https://via.placeholder.com/80x80/34C759/FFFFFF?text=PE",
+                  "category": "education"
+                },
+                {
+                  "id": "pp3",
+                  "title": "Trending Episode",
+                  "imageUrl": "https://via.placeholder.com/80x80/34C759/FFFFFF?text=Trend",
+                  "category": "news"
+                },
+                {
+                  "id": "pp4",
+                  "title": "Health Update",
+                  "imageUrl": "https://via.placeholder.com/80x80/34C759/FFFFFF?text=Health",
+                  "category": "health"
+                }
+              ]
+            },
+            "itemBuilder": {
               "type": "card",
-              "size": "expanded",
+              "style": {
+                "padding": { "all": 16 },
+                "margin": { "bottom": 8 },
+                "borderRadius": 12
+              },
               "children": [
-                { "type": "image", "src": "${item.imageUrl}", "size": "small" },
-                { "type": "text", "text": "${item.title}" },
-                { "type": "chip", "label": "${item.category}" }
+                {
+                  "type": "row",
+                  "children": [
+                    {
+                      "type": "image",
+                      "src": "${item.imageUrl}",
+                      "width": 80,
+                      "height": 80,
+                      "borderRadius": 8,
+                      "margin": { "right": 16 }
+                    },
+                    {
+                      "type": "column",
+                      "flex": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "text": "${item.title}",
+                          "style": {
+                            "color": "${theme.onSurface}",
+                            "fontSize": 16
+                          }
+                        },
+                        {
+                          "type": "chip",
+                          "label": "${item.category}",
+                          "style": {
+                            "color": "${theme.primary}",
+                            "margin": { "top": 4 }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
               ]
             }
           }
@@ -127,29 +492,151 @@
         "title": "Content Library C",
         "scope": "authenticated",
         "layout": "scroll",
+        "style": { "backgroundColor": "${theme.background}" },
         "children": [
           {
-            "type": "dropdown",
-            "label": "Sort",
-            "options": ["Progress", "Recent", "Alphabetical"],
-            "defaultSelected": "Progress",
-            "onChange": { "type": "updateState", "key": "sortBy", "value": "${selected}" }
+            "type": "row",
+            "style": { "margin": { "bottom": 16 } },
+            "children": [
+              {
+                "type": "chip",
+                "label": "Progress",
+                "selected": "${state.sortBy == 'Progress'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "sortBy",
+                  "value": "Progress"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "Recent",
+                "selected": "${state.sortBy == 'Recent'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "sortBy",
+                  "value": "Recent"
+                },
+                "style": { "margin": { "right": 8 } }
+              },
+              {
+                "type": "chip",
+                "label": "Alphabetical",
+                "selected": "${state.sortBy == 'Alphabetical'}",
+                "action": {
+                  "type": "updateState",
+                  "key": "sortBy",
+                  "value": "Alphabetical"
+                }
+              }
+            ]
           },
           {
             "type": "grid",
             "columns": 2,
-            "dataSource": { "type": "apiCall", "service": "ContentService", "endpoint": "getItems", "params": { "category": "ebooks" } },
-            "itemTemplate": {
+            "id": "ebookGrid",
+            "dataSource": {
+              "type": "static",
+              "data": [
+                {
+                  "id": "pe1",
+                  "title": "Personal Fiction",
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500/FFFFFF?text=PF",
+                  "progress": 60,
+                  "category": "fiction"
+                },
+                {
+                  "id": "pe2",
+                  "title": "Mystery Novel",
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500/FFFFFF?text=PM",
+                  "progress": 20,
+                  "category": "mystery"
+                },
+                {
+                  "id": "pe3",
+                  "title": "Sci-Fi Adventure",
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500/FFFFFF?text=PS",
+                  "progress": 80,
+                  "category": "science"
+                },
+                {
+                  "id": "pe4",
+                  "title": "Biography Read",
+                  "imageUrl": "https://via.placeholder.com/120x160/FF9500/FFFFFF?text=PB",
+                  "progress": 90,
+                  "category": "biography"
+                }
+              ]
+            },
+            "itemBuilder": {
               "type": "card",
-              "size": "expanded",
+              "style": {
+                "margin": { "right": 8, "bottom": 8 },
+                "borderRadius": 12,
+                "padding": { "all": 12 }
+              },
               "children": [
-                { "type": "image", "src": "${item.imageUrl}", "size": "medium" },
-                { "type": "text", "text": "${item.title}" },
-                { "type": "progressBar", "value": "${item.progress}", "max": 100, "color": "${item.progress > 50 ? theme.primary : theme.error}" }
+                {
+                  "type": "image",
+                  "src": "${item.imageUrl}",
+                  "width": 120,
+                  "height": 160,
+                  "borderRadius": 8
+                },
+                {
+                  "type": "text",
+                  "text": "${item.title}",
+                  "style": {
+                    "color": "${theme.onSurface}",
+                    "fontSize": 14,
+                    "margin": { "top": 8 }
+                  },
+                  "maxLines": 1
+                },
+                {
+                  "type": "chip",
+                  "label": "${item.category}",
+                  "style": {
+                    "color": "${theme.primary}",
+                    "margin": { "top": 4 }
+                  }
+                },
+                {
+                  "type": "progressIndicator",
+                  "value": "${item.progress / 100}",
+                  "max": 1,
+                  "style": {
+                    "color": "${theme.primary}",
+                    "margin": { "top": 8 }
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "${item.progress}%",
+                  "style": {
+                    "color": "${theme.onSurface}",
+                    "fontSize": 12,
+                    "margin": { "top": 4 }
+                  }
+                }
               ]
             }
           }
         ]
+      }
+    }
+  },
+  "state": {
+    "pageScoped": {
+      "music": {
+        "filter": { "type": "string", "default": "All" }
+      },
+      "podcasts": {
+        "filter": { "type": "string", "default": "All" }
+      },
+      "ebooks": {
+        "sortBy": { "type": "string", "default": "Progress" }
       }
     }
   }

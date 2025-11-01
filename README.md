@@ -5,6 +5,7 @@ Dynamic UX MVP API built with NestJS and MongoDB.
 - API reference: `docs/nest-api.md`
 - Modules overview: `docs/nest-modules.md`
 - Setup guide: `docs/nest-setup.md`
+- Contracts behavior: `docs/contracts-behavior.md`
 - Swagger UI: visit `http://localhost:8081/api` when the server is running.
 
 ## Recent Changes

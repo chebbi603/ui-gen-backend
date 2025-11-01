@@ -22,6 +22,36 @@ Supported lists (components, actions, validations) are derived from docs when av
 
 If docs are missing or do not include these lists, the validator falls back to built-in defaults.
 
+## Action Schema Update (Flutter Alignment)
+
+To align canonical contracts with the Flutter parser and dispatcher:
+- Use `action` (string) inside action objects instead of `type`.
+- For navigation:
+  - Example: `{ "action": "navigate", "route": "/login" }`
+- For form submission:
+  - Example (login):
+    ```json
+    {
+      "action": "submitForm",
+      "service": "auth",
+      "endpoint": "login",
+      "params": { "formId": "login" },
+      "onSuccess": { "action": "navigate", "route": "/home" },
+      "onError": { "action": "showError", "params": { "message": "Login failed" } }
+    }
+    ```
+- For error/success dialogs: provide messages via `params.message`.
+
+Text field bindings:
+- Bind input fields to page state using `binding` with `${state.<pageId>.<key>}`.
+- Example: email/password on `login` page
+  - Email: `"binding": "${state.login.email}"`, keyboard `"email"`
+  - Password: `"binding": "${state.login.password}"`, `"obscure": true`
+
+Notes:
+- Backend `FlutterContractFilterService` normalizes `keyboard` → `keyboardType` and `obscure` → `obscureText` for Flutter widgets.
+- The validator flags actions missing required fields (e.g., `apiCall` without `service`/`endpoint`). Using `submitForm` for auth login is recommended to ensure proper state collection.
+
 ## Integration
 
 Use the NestJS `ContractValidationService` to validate contracts:

@@ -5,6 +5,7 @@ import { ContractService } from '../../contract/services/contract.service';
 import { EventService } from '../../event/services/event.service';
 import { CacheService } from '../../../common/services/cache.service';
 import { ContractMergeService } from '../../contract/services/contract-merge.service';
+import { FlutterContractFilterService } from '../../contract/services/flutter-contract-filter.service';
 
 describe('UserController', () => {
   let controller: UserController;
@@ -29,6 +30,10 @@ describe('UserController', () => {
         {
           provide: ContractMergeService,
           useValue: { mergeContracts: jest.fn() },
+        },
+        {
+          provide: FlutterContractFilterService,
+          useValue: { filterForFlutter: (json: any) => json },
         },
       ],
     }).compile();

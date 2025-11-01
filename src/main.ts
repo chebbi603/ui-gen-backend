@@ -24,6 +24,27 @@ async function bootstrap() {
   const { AppModule } = await import('./modules/app/app.module');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  // Debug request logging: log method, URL, headers, and body
+  app.use((req: any, _res: any, next: () => void) => {
+    try {
+      const headers = { ...req.headers };
+      // Avoid logging very long headers or sensitive cookies
+      if (headers['authorization']) {
+        headers['authorization'] = '[REDACTED Bearer]';
+      }
+      // eslint-disable-next-line no-console
+      console.log('[Request]', {
+        method: req.method,
+        url: req.originalUrl || req.url,
+        headers,
+        body: req.body,
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Request logger error:', (e as any)?.message || e);
+    }
+    next();
+  });
   // Enable response compression before any route/controller registration
   app.use(
     compression({

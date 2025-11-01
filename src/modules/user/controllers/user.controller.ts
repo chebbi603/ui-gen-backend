@@ -29,6 +29,7 @@ import { TrackingEventDto } from '../../event/dto/tracking-event.dto';
 import { UserSummaryDto } from '../dto/user-summary.dto';
 import { CacheService } from '../../../common/services/cache.service';
 import { ContractMergeService } from '../../contract/services/contract-merge.service';
+import { FlutterContractFilterService } from '../../contract/services/flutter-contract-filter.service';
 
 @ApiTags('users')
 @ApiBearerAuth('accessToken')
@@ -40,6 +41,7 @@ export class UserController {
     private readonly eventService: EventService,
     private readonly cache: CacheService,
     private readonly contractMerge: ContractMergeService,
+    private readonly flutterFilter: FlutterContractFilterService,
   ) {}
 
   private readonly logger = new Logger(UserController.name);
@@ -130,11 +132,14 @@ export class UserController {
         );
         const createdAtCanon = (canonical as any)?.createdAt as Date | undefined;
         const updatedAtCanon = (canonical as any)?.updatedAt as Date | undefined;
+        const filteredJson = this.flutterFilter.filterForFlutter(
+          (mergedJson ?? {}) as Record<string, unknown>,
+        );
         const res: ContractDTO = {
           id: (canonical as any)?._id?.toString?.() || '',
           userId: id,
           version: (canonical as any)?.version ?? (personalized as any)?.version,
-          json: mergedJson as Record<string, unknown>,
+          json: filteredJson,
           createdAt: createdAtCanon
             ? createdAtCanon.toISOString()
             : new Date().toISOString(),
@@ -157,11 +162,14 @@ export class UserController {
     // No personalized or merge errored: return canonical
     const createdAt = (canonical as any)?.createdAt as Date | undefined;
     const updatedAt = (canonical as any)?.updatedAt as Date | undefined;
+    const filteredCanonJson = this.flutterFilter.filterForFlutter(
+      ((canonical as any)?.json ?? {}) as Record<string, unknown>,
+    );
     const res: ContractDTO = {
       id: (canonical as any)?._id?.toString?.() || '',
       userId: id,
       version: (canonical as any)?.version ?? '',
-      json: ((canonical as any)?.json ?? {}) as Record<string, unknown>,
+      json: filteredCanonJson,
       createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),
       updatedAt: updatedAt ? updatedAt.toISOString() : new Date().toISOString(),
       meta: (canonical as any)?.meta ?? {},
