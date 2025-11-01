@@ -4,6 +4,7 @@ import { GeminiGenerationJobData } from '../queue.constants';
 import { LlmService } from '../../llm/services/llm.service';
 import { ContractService } from '../../contract/services/contract.service';
 import { UserContractService } from '../../user-contract/services/user-contract.service';
+import { ContractValidationService } from '../../contract/services/contract-validation.service';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types as MongooseTypes } from 'mongoose';
@@ -17,6 +18,7 @@ export class GeminiGenerationProcessor {
     private readonly llmService: LlmService,
     private readonly contractService: ContractService,
     private readonly userContractService: UserContractService,
+    private readonly validationService: ContractValidationService,
     private readonly config: ConfigService,
     @InjectModel(LlmJob.name) private readonly llmJobModel: Model<LlmJob>,
   ) {}
@@ -43,6 +45,14 @@ export class GeminiGenerationProcessor {
           version,
         });
       await job.updateProgress(50);
+      // Pre-persistence validation of generated contract JSON
+      const validation = this.validationService.validate(json as Record<string, any>);
+      if (!validation.isValid) {
+        const msg =
+          'Validation error: ' +
+          validation.errors.map((e) => `${e.path}: ${e.message}`).join('; ');
+        throw new Error(msg);
+      }
       const contract = await this.contractService.create(
         json,
         nextVersion,

@@ -21,6 +21,7 @@ import {
 } from '../user-contract/entities/user-contract.entity';
 import { LlmModule } from '../llm/llm.module';
 import { QueueModule } from '../queue/queue.module';
+import { CacheService } from '../../common/services/cache.service';
 
 @Module({
   imports: [
@@ -123,6 +124,6 @@ import { QueueModule } from '../queue/queue.module';
     ]),
   ],
   controllers: [AppController],
-  providers: [AppService, SeedService],
+  providers: [AppService, SeedService, CacheService],
 })
 export class AppModule {}

@@ -47,6 +47,8 @@ describe('Contracts (e2e)', () => {
     expect(res.body).toHaveProperty('json');
     expect(res.body).toHaveProperty('version', '1.0.0');
     expect(res.body).toHaveProperty('id');
+    // Cache header must be present for canonical route
+    expect(res.header['cache-control']).toBe('public, max-age=300');
   });
 
   it('GET /contracts/public/canonical (alias) returns latest canonical contract', async () => {
@@ -58,6 +60,14 @@ describe('Contracts (e2e)', () => {
     expect(res.body).toHaveProperty('json');
     expect(res.body).toHaveProperty('version', '1.0.0');
     expect(res.body).toHaveProperty('id');
+    // Alias should have same caching header
+    expect(res.header['cache-control']).toBe('public, max-age=300');
+
+    // Bodies should be identical to canonical
+    const canonicalRes = await request(app.getHttpServer())
+      .get('/contracts/canonical')
+      .expect(200);
+    expect(JSON.stringify(res.body)).toBe(JSON.stringify(canonicalRes.body));
   });
 
   it('GET /contracts/:id requires JWT (protected)', async () => {

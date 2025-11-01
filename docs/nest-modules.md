@@ -147,8 +147,11 @@ Caching
       - Response DTO: `ContractDto`
 - Services:
   - `LlmService` — synthesizes optimized contract using `EventService` and `ContractService`.
-- Dependencies:
-  - Imports `ContractModule` and `EventModule`.
+  - `GeminiService` — provider-backed generation that incorporates aggregated analytics and pain point detection.
+  - `GeminiClient` — initializes Google GenAI client when `LLM_PROVIDER=gemini` and `GEMINI_API_KEY` is set.
+  - Caching: `CacheService` caches per-user analytics summary under `llm:analytics:{userId}` with TTL 300 seconds.
+Dependencies:
+  - Imports `ContractModule`, `EventModule`, and `SessionModule`.
 
 ---
 
@@ -179,7 +182,7 @@ Caching
 - Purpose: Background processing for contract generation and related jobs.
 - Providers:
   - `QueueService` — initializes BullMQ queues and workers; manages job cleanup.
-  - `GeminiGenerationProcessor` — processes gemini-generation jobs using `LlmService` and persists via `ContractService`.
+  - `GeminiGenerationProcessor` — processes gemini-generation jobs using `LlmService`/`GeminiService` and persists via `ContractService`; captures reasoning in `meta.optimizationExplanation` and stores analyzed metrics when available.
 - Imports:
   - `ConfigModule`, `LlmModule`, `ContractModule`.
 - Configuration:

@@ -4,9 +4,9 @@ Project: nestjs-mongo (NestJS)
 ## Latest Run Summary
 - Command: `npm test --silent`
 - Test Suites: 19 passed, 19 total
-- Tests: 60 passed, 60 total
+- Tests: 61 passed, 61 total
 - Snapshots: 0 total
-- Time: ~4.3 s
+- Time: ~5.0 s
 
 ## Test Suites and What They Test
 
@@ -67,7 +67,8 @@ Project: nestjs-mongo (NestJS)
   - Ensures controller endpoints delegate to queue service and return expected shapes.
 
 - `src/modules/queue/processors/gemini-generation.processor.spec.ts`
-  - Covers success path, retryable failures, and non-retryable failures.
+  - Covers success path, retryable failures, non-retryable failures, and validation failure post-LLM.
+  - Injects `ContractValidationService` mock; asserts discard and error logging on validation errors.
   - Uses a valid `ObjectId` for `userId` to avoid `BSONTypeError`.
 
 - `src/modules/llm/services/gemini.service.spec.ts`
@@ -95,6 +96,18 @@ Project: nestjs-mongo (NestJS)
 
 ## Full Output (Latest Run)
 ```
+## Latest Run Summary (Index Update - 2025-11-01)
+- Command: `npm test --silent`
+- Test Suites: 19 passed, 19 total
+- Tests: 61 passed, 61 total
+- Snapshots: 0 total
+- Time: ~8.4 s
+
+### Notes
+- Added schema indexes to `User`, `Event`, and `Contract` entities.
+- No test regressions; processor validation behavior remains intact.
+- See `docs/nest-db-indexes.md` for details and verification steps.
+```
 > jest
 
 PASS  src/modules/auth/services/auth.service.spec.ts
@@ -112,7 +125,7 @@ PASS  src/modules/app/controllers/app.controller.spec.ts
 ... (remaining suites passed)
 
 Test Suites: 19 passed, 19 total
-Tests:       60 passed, 60 total
+Tests:       61 passed, 61 total
 Snapshots:   0 total
-Time:        ~4.3 s
+Time:        ~5.0 s
 ```

@@ -23,6 +23,10 @@ async function bootstrap() {
   const { AppModule } = await import('./modules/app/app.module');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  // Enable gzip compression for JSON payloads
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const compression = require('compression');
+  app.use(compression());
   app.enableCors();
   app.useGlobalFilters(new CanonicalErrorFilter());
   app.useGlobalPipes(new ValidationPipe({

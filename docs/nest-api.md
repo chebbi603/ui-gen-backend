@@ -115,13 +115,40 @@ Notes:
 
 - `POST /events` (JWT)
   - Inserts a batch of events attributed to the current JWT user.
-  - Request DTO: `CreateEventsBatchDto`
-  - Response DTO: `InsertedCountDto`
+  - **Request Payload** (`CreateEventsBatchDto`):
+    ```json
+    {
+      "events": [
+        {
+          "timestamp": "2023-10-03T10:00:00.000Z",
+          "page": "onboarding",
+          "componentId": "email-input",
+          "eventType": "input",
+          "data": { "value": "user@example.com" },
+          "sessionId": "651c0e89b4e91e5eb2a9c1fa"
+        },
+        {
+          "timestamp": "2023-10-03T10:00:01.000Z",
+          "componentId": "submit-btn",
+          "eventType": "tap"
+        }
+      ]
+    }
+    ```
+  - **Response** (`InsertedCountDto`): `{ "inserted": 2 }`
 
 - `POST /events/tracking-event` (JWT)
   - Inserts a single tracking event for the current JWT user.
-  - Request DTO: `EventDto`
-  - Response DTO: `InsertedCountDto`
+  - **Request Payload** (`EventDto`):
+    ```json
+    {
+      "timestamp": "2023-10-03T10:00:05.000Z",
+      "componentId": "submit-btn",
+      "eventType": "error",
+      "data": { "message": "Invalid email format" }
+    }
+    ```
+  - **Response** (`InsertedCountDto`): `{ "inserted": 1 }`
 
 - `GET /events/user/:userId` (JWT)
   - Lists events for a specific user. Only the user or ADMIN may read.
@@ -132,9 +159,94 @@ Notes:
 ## LLM
 
 - `POST /llm/generate-contract` (JWT)
-  - Generates and persists an optimized contract using user analytics and optional base contract.
-  - Request DTO: `GenerateContractRequestDto`
-  - Response DTO: `ContractDto` (standardized including `id` and `meta`).
+  - **Process**: This endpoint generates and persists an optimized contract by first aggregating user analytics. It checks for a cached summary (`llm:analytics:{userId}`), and if not found, computes and caches it. The analytics include pain points (e.g., rage clicks, error patterns) and usage stats. This data is used to build a prompt for the configured LLM provider (`gemini`, `openai`, etc.). If the provider call succeeds, the new contract is persisted; otherwise, a heuristic fallback is used. The resulting contract `meta` field includes `optimizationExplanation` and `analytics` from the generation process when available.
+  - **Technical flow**:
+    - Validate `GenerateContractRequestDto` and user authorization.
+    - Load analytics from Redis (`llm:analytics:{userId}`) or compute via `EventService`.
+    - Compose prompt with `baseContract.meta` and detected pain points.
+    - Call provider (`GeminiClient`) when configured; on failure, use heuristic fallback.
+    - Validate contract JSON, persist via `ContractService`, return `ContractDto`-like response.
+  - **Request Payload** (`GenerateContractRequestDto`):
+    ```json
+    {
+      "userId": "64f5b7e86831d4f215d7b8d4",
+      "baseContract": {
+        "meta": { "description": "Base contract to optimize." },
+        "pagesUI": { "pages": {} }
+      },
+      "version": "1.2.0"
+    }
+    ```
+  - **Response** (`ContractDto`):
+    ```json
+    {
+      "id": "651c0f0a1d6d7e6a4e3b1c6d",
+      "userId": "64f5b7e86831d4f215d7b8d4",
+      "version": "1.2.1",
+      "json": { /* ... optimized contract ... */ },
+      "createdAt": "2023-10-03T10:00:00.000Z",
+      "updatedAt": "2023-10-03T10:00:00.000Z",
+      "meta": {
+        "optimizedBy": "gemini",
+        "optimizedByModel": "gemini-2.5-flash",
+        "optimizationExplanation": "Identified user confusion around the 'submit' button and replaced it with a clearer stepper component.",
+        "analytics": {
+          "errorRate": 0.15,
+          "painPoints": [
+            { "type": "rage-click", "componentId": "submit-btn", "reason": "3 taps in 980ms" }
+          ]
+        }
+      }
+    }
+    ```
+  - Behavior: aggregates analytics for the target user, including `eventTypeDistribution`, `errorRate`, and pain points.
+  - Pain points: `rage-click`, `form-abandonment`, `error-pattern`, `long-dwell`.
+  - Caching: analytics summary cached under Redis key `llm:analytics:{userId}` with TTL 300 seconds (if Redis is configured).
+  - Note: In the current code, the controller returns a subset of `ContractDto` (may omit `id` and `meta`) while Swagger types the response as `ContractDto`. The example above reflects the intended standardized shape.
+  - Provider: when `LLM_PROVIDER=gemini` and `GEMINI_API_KEY` are configured, Gemini is used; otherwise a heuristic fallback embeds `analytics.eventCounts`.
+
+### Gemini (Queue)
+
+- `POST /gemini/generate-contract` (JWT + ADMIN)
+  - **Process**: Validates input and checks the Gemini circuit breaker state. If closed, enqueues a generation job in the queue and returns `202 Accepted` with the job ID. The processor will compute analytics (with Redis cache for `llm:analytics:{userId}`), call Gemini, persist the contract, and attach generation metadata. If the circuit is open (e.g., due to repeated failures), responds with `503 Service Unavailable`.
+  - **Request Payload** (`EnqueueGeminiJobDto`):
+    ```json
+    { "userId": "64f5b7e86831d4f215d7b8d4", "priority": 5 }
+    ```
+  - **Response** (`EnqueueJobResponseDto`):
+    ```json
+    { "jobId": "gem-8a74b7d0-9f1e-4e37-b7c0-29b1b060c3bb", "message": "Accepted" }
+    ```
+  - Circuit breaker: `503` with body `{ "error": { "code": "CIRCUIT_OPEN", "message": "Gemini temporarily disabled" } }`.
+
+- `GET /gemini/jobs/:jobId` (JWT)
+  - **Process**: Reads job state from the queue store and returns status, progress, timestamps, and result/error when available.
+  - **Response** (`GeminiJobStatusDto`):
+    ```json
+    {
+      "id": "gem-8a74b7d0-9f1e-4e37-b7c0-29b1b060c3bb",
+      "status": "completed",
+      "progress": 100,
+      "result": {
+        "contractId": "651c0f0a1d6d7e6a4e3b1c6d",
+        "version": "1.2.1"
+      },
+      "error": null,
+      "timestamps": {
+        "createdAt": "2023-10-03T10:00:00.000Z",
+        "startedAt": "2023-10-03T10:00:02.000Z",
+        "completedAt": "2023-10-03T10:00:08.000Z"
+      }
+    }
+    ```
+  - Status values: `queued`, `processing`, `completed`, `failed`.
+
+- `POST /gemini/circuit-breaker/reset` (JWT + ADMIN)
+  - **Process**: Forces the circuit breaker to a closed state, allowing new jobs to enqueue.
+  - **Response**:
+    ```json
+    { "success": true }
+    ```
 
 ---
 

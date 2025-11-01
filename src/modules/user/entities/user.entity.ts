@@ -24,6 +24,12 @@ export class User extends Document {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
+// Indexes for fast lookups
+// Ensure unique index on email for fast login and deduplication
+UserSchema.index({ email: 1 }, { unique: true });
+// Optional non-unique index on username to support username-based queries
+UserSchema.index({ username: 1 });
+
 UserSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,

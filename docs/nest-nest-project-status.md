@@ -175,16 +175,27 @@ Limitations
 - No session timeout or heartbeat; sessions end only via explicit API call.
 
 ### LLM Module — `src/modules/llm`
-- `llm.module.ts` — Registers controller/service; imports `ConfigModule`, `ContractModule`, and `EventModule`.
+- `llm.module.ts` — Registers controllers/services; imports `ConfigModule`, `ContractModule`, `EventModule`, and `SessionModule`.
 - Controllers
-  - `controllers/llm.controller.ts` — `POST /llm/generate-contract` generates an optimized contract using analytics; persists via `ContractService` and returns the created contract DTO.
+  - `controllers/llm.controller.ts` — `POST /llm/generate-contract` generates an optimized contract using aggregated analytics; persists via `ContractService` and returns the created contract DTO.
+  - `controllers/gemini.controller.ts` — Admin queue endpoints for Gemini jobs: `POST /gemini/generate-contract`, `GET /gemini/jobs/:jobId`, `POST /gemini/circuit-breaker/reset`.
 - Services
-  - `services/llm.service.ts` — Computes `eventType` counts and embeds them into contract JSON under `analytics.eventCounts`; bumps patch version (`x.y.z → x.y.(z+1)`), defaults to `0.1.0` when invalid.
+  - `services/llm.service.ts` — Heuristic fallback that computes `eventType` counts and embeds into `analytics.eventCounts`; bumps patch version (`x.y.z → x.y.(z+1)`), defaults to `0.1.0` when invalid.
+  - `services/gemini.service.ts` — Aggregates analytics (`eventTypeDistribution`, `errorRate`, pain points: rage-click, form-abandonment, error-pattern, long-dwell) and calls Gemini when configured.
+  - Caching: analytics summaries cached under Redis key `llm:analytics:{userId}` with TTL 300 seconds.
 - DTOs
   - `dto/generate-contract.dto.ts` — Input `userId`, optional `baseContract`, optional `version`.
 
 Limitations
-- The `/llm/generate-contract` endpoint uses a heuristic; provider clients (e.g., Gemini) are integrated and leveraged by the queue processor for background generation. Consider unifying direct generation to use provider clients and capture provenance in `meta`.
+- The `/llm/generate-contract` endpoint uses heuristic fallback when provider is not configured; the Gemini provider is leveraged for background generation via queue endpoints. Consider unifying direct generation to always use provider clients when available and capture provenance in `meta`.
+
+### Queue Module — `src/modules/queue`
+- `queue.module.ts` — Wires BullMQ queues and workers; depends on Redis.
+- Providers
+  - `services/queue.service.ts` — Initializes queues/workers, handles cleanup windows via `queue.cleanup.*` config.
+  - `processors/gemini-generation.processor.ts` — Consumes jobs to generate contracts via `GeminiService`/`LlmService`; attaches `meta.optimizationExplanation` and `analytics` to persisted contracts when available.
+- Configuration
+  - `queue.config.ts` — `QUEUE_GEMINI_ATTEMPTS`, `QUEUE_GEMINI_BACKOFF_MS`, `QUEUE_GEMINI_TIMEOUT_MS`, cleanup windows, and `QUEUE_ADD_TEST_JOB` dev helper.
 
 ## Common Utilities
 - `src/common/dto/index.ts`
@@ -193,6 +204,9 @@ Limitations
 - Filters
   - `src/common/filters/canonical-error.filter.ts` — Global exception filter mapping exceptions to a standardized JSON envelope (`error.code`, `error.message`, `error.details`, `requestId`).
   - `src/common/filters/canonical-error.filter.spec.ts` — Tests to confirm error formatting for `HttpException` and generic `Error`.
+
+ - Caching
+   - `src/common/services/cache.service.ts` — Optional Redis-backed cache used by public contract endpoints and LLM analytics (`llm:analytics:{userId}` with TTL 300s); gracefully disables when Redis is not configured.
 
 - Validation Helpers
   - `src/common/validation/enhanced-validator.ts` — Configurable field-level and cross-field validation helper (`required`, `email`, `minLength`, `pattern`, and an `equal` cross-field rule). Useful for UI form validation or contract validation steps.

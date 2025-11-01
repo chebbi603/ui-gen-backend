@@ -25,3 +25,6 @@ export class Contract extends Document {
 }
 
 export const ContractSchema = SchemaFactory.createForClass(Contract);
+ContractSchema.index({ version: 1 });
+ContractSchema.index({ userId: 1, createdAt: -1 });
+ContractSchema.index({ createdAt: -1 });

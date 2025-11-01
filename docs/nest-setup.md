@@ -30,7 +30,8 @@ Optional:
 Redis & Caching:
 - Redis is optional; when configured, read endpoints leverage a lightweight cache (`CacheService`) to reduce DB load.
 - Canonical and user contract endpoints set `Cache-Control` headers and use Redis keys `contracts:canonical` and `contracts:user:{id}`.
-- TTL defaults to 300 seconds; caching gracefully disables when Redis is unavailable.
+- TTL defaults to 300 seconds for common reads; LLM analytics are cached under `llm:analytics:{userId}` with TTL 300 seconds.
+- Caching gracefully disables when Redis is unavailable; `CacheService` logs warnings and falls back to direct reads.
 - Redis config values are provided via `redis.*` config keys, populated from env: `REDIS_URL` or host/port/password/db.
 
 Startup validation:
@@ -90,7 +91,7 @@ CORS is enabled globally. To restrict origins, update server bootstrap to pass o
 ## Useful URLs
 
 - API docs: `/api` (Swagger UI)
-- Endpoint reference: `docs/api.md`
+ - Endpoint reference: `docs/nest-api.md`
 
 ## Testing
 

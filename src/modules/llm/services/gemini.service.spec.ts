@@ -5,6 +5,7 @@ import { ContractService } from '../../contract/services/contract.service';
 import { EventService } from '../../event/services/event.service';
 import { SessionService } from '../../session/services/session.service';
 import { GeminiClient } from '../clients/gemini.client';
+import { CacheService } from '../../../common/services/cache.service';
 
 describe('GeminiService (circuit breaker)', () => {
   let service: GeminiService;
@@ -14,6 +15,7 @@ describe('GeminiService (circuit breaker)', () => {
   const mockEvent: any = {};
   const mockSession: any = {};
   const mockClient: any = { isEnabled: jest.fn().mockReturnValue(true) };
+  const mockCache: any = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -25,6 +27,7 @@ describe('GeminiService (circuit breaker)', () => {
         { provide: EventService, useValue: mockEvent },
         { provide: SessionService, useValue: mockSession },
         { provide: GeminiClient, useValue: mockClient },
+        { provide: CacheService, useValue: mockCache },
       ],
     }).compile();
 

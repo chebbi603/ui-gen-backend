@@ -8,10 +8,11 @@ import { EventModule } from '../event/event.module';
 import { GeminiClient } from './clients/gemini.client';
 import { SessionModule } from '../session/session.module';
 import { GeminiService } from './services/gemini.service';
+import { CacheService } from '../../common/services/cache.service';
 
 @Module({
   imports: [ConfigModule, ContractModule, EventModule, SessionModule],
-  providers: [LlmService, GeminiClient, GeminiService],
+  providers: [LlmService, GeminiClient, GeminiService, CacheService],
   controllers: [LlmController, LlmPublicController],
   exports: [LlmService, GeminiClient, GeminiService],
 })
