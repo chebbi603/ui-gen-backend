@@ -12,6 +12,30 @@ Project: nestjs-mongo (NestJS)
   - Queue and Gemini paths log expected errors during retries (validation/network), but unit tests assert circuit breaker behavior correctly.
   - Benign warning: `--localstorage-file` without a valid path during queue tests.
 
+## Latest Run Summary — Unit (Analyze Events improvements array)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.2 s
+- Notes:
+  - GeminiController updated to return `improvements` alongside `painPoints`; fallback for zero events returns empty arrays for both.
+  - Unit test module now provides `ConfigService` mock (model: `gemini-2.5-flash`) to satisfy controller dependencies.
+  - Prior failures due to missing `improvements` property resolved; all suites pass.
+
+## Latest Run Summary — Unit (Analyze Events Endpoint)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~5.1 s
+- Notes:
+  - Adding `POST /gemini/analyze-events` and wiring `EventService` into `GeminiController` did not break existing tests.
+  - Expected logs: circuit breaker opening in `GeminiService`; simulated validation/network failures in `GeminiGenerationProcessor`.
+  - Benign warning: `--localstorage-file` provided without a valid path during queue specs.
+
 ## Latest Run Summary — E2E
 - Date: 2025-11-02
 - Command: `npm run test:e2e --silent`
@@ -165,15 +189,21 @@ Project: nestjs-mongo (NestJS)
 
 ## E2E Test Summary (Latest Run)
 
-- Command: `npm run test:e2e`
-- Suites: All e2e suites passed.
-- Coverage: Smoke coverage verifies public canonical endpoints and protected contract access.
+- Command: `npm run test:e2e --silent`
+- Suites: 3 passed, 0 failed
+- Tests: 6 passed, 0 failed
+- Coverage: Public canonical endpoints, not-found behavior, and invalid POST validation envelopes.
 - What’s covered:
-  - `GET /contracts/canonical` returns `200` without authentication.
-  - `GET /contracts/public/canonical` returns `200` (alias route).
-  - `GET /contracts/:id` returns `401` when unauthenticated.
+  - `GET /contracts/canonical` returns `200` without authentication and includes `Cache-Control: public, max-age=300`.
+  - `GET /contracts/public/canonical` returns `200` (alias) with identical body and caching header.
+  - `GET /contracts/:id` returns `404` when a contract does not exist (no guard applied in tests).
+  - `POST /contracts` with invalid JSON returns `400` and canonical error envelope:
+    - Body: `{ error: { code: 'BAD_REQUEST', message: 'Invalid contract json', details: { message: 'Invalid contract json', errors: [...] } }, requestId }`.
+  - `POST /users/:id/contract` with invalid `version` returns `400` and canonical error envelope:
+    - Body: `{ error: { code: 'BAD_REQUEST', message: 'version must be semver string like 1.0.0' }, requestId }`.
 - Environment notes:
-  - E2E Jest config maps `jsonwebtoken` to a local mock and stubs Redis (`ioredis`) to prevent import-time errors and external dependencies.
+  - E2E setup mocks `jsonwebtoken` and `ioredis` to avoid external dependencies.
+  - Tests register `CanonicalErrorFilter` globally to ensure standardized error envelopes.
 
 ## Latest Run — 2025-11-02 (Post MVP public events)
 
@@ -331,6 +361,18 @@ Time:        ~6.5 s
   - Confirms stability after public endpoint changes across Events, Gemini, LLM, Sessions.
   - No new failures or flaky tests detected.
 
+## Latest Run Summary — Unit (Event Ingestion Aliasing)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.5 s
+- Notes:
+  - Extended `EventDto` and `CreateEventsBatchDto` to accept optional `userId`/`_id`/`id` for explicit user attribution during ingestion.
+  - Updated `EventController` to prefer body-provided aliases over JWT or fallback `PUBLIC_EVENTS_USER_ID`.
+  - Benign warnings observed: `--localstorage-file` without valid path; circuit-breaker log from `GeminiService` expected.
+
 ## Latest Run Summary (Disable dummy event seeding by default)
 - Date: 2025-11-02
 - Command: `npm test --silent`
@@ -352,3 +394,89 @@ Time:        ~6.5 s
   - Early `.env` loading added via `dotenv/config` in `src/main.ts`.
   - In-memory Mongo disabled when `.env` contains `USE_MEMORY_MONGO=false` and a valid `MONGO_URL`.
   - Ingestion verified: `POST /events` returns `{ inserted: N }`; `GET /events/aggregate` returns stats.
+
+## Latest Run Summary (Analyze-events fallback to all-time)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.3 s
+- Notes:
+  - Updated `POST /gemini/analyze-events` to widen the event window when the last 7 days have no events (falls back to all-time events, limited to 100).
+  - Ensures the LLM is invoked when older events exist; returns `{ message: 'No events found for this user.' }` only when no events exist at all.
+  - No unit tests required changes; controller and service suites still pass.
+## Latest Run Summary — 2025-11-02 (analyze-events doc alignment)
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~11.7 s
+- Notes:
+  - Confirmed no JWT guard applied to `/gemini/analyze-events`; controller remains public in MVP.
+  - Expected logs from `GeminiService` circuit breaker and `GeminiGenerationProcessor` retries observed; tests green.
+
+## Latest Run Summary — 2025-11-02 (analyze-events: skip LLM on zero events)
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~9.7 s
+- Notes:
+  - `POST /gemini/analyze-events` now returns empty arrays and a message when no events exist even after widening to all-time; LLM call is skipped in this case.
+  - Fixed TypeScript type error by annotating `improvementsFallback` as `ImprovementDto[]` in controller.
+  - Observed expected simulated error logs in `GeminiGenerationProcessor` tests (validation and network timeout); suites pass consistently.
+
+## Latest Run Summary — Unit (Analyze Events id-only enforcement)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Notes:
+  - Enforced `POST /gemini/analyze-events` to accept only `id` or `_id`; `userId` now rejected with `400 Bad Request`.
+  - Updated `AnalyzeEventsRequestDto` to remove `userId` and `GeminiController.analyzeEvents` to require `id/_id`.
+  - Frontend `react-dashboard/src/lib/api.ts` now sends `{ id }` for analyze requests.
+## Latest Run Summary — Unit (EventService user filter fix)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Notes:
+  - Fixed incorrect event queries using `{ id: ObjectId(...) }` to `{ userId: ObjectId(...) }` in `EventService.listByUser` and `getLastForUser`.
+  - This ensures `GET /users/:id/tracking-events` and recent event checks return the correct data.
+
+## Latest Run Summary — Unit (Standardize events to userId; clean User docs)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Notes:
+  - Restored `Event` schema to use `userId` (reference to `User._id`) and updated indexes.
+  - Ensured `EventService.createBatch`, `listByUser`, `getLastForUser`, and `getRecentEvents` consistently use `userId`.
+  - Reverted controllers to map events using `e.userId` for tracking and session details.
+  - Documentation: User entity is documented with `id` only; related records (Events, Sessions, Contracts) reference users via `userId`. Removed `userId` alias mentions from event ingestion to reduce confusion.
+
+## Latest Run Summary — Unit (Batch per-event alias override)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Notes:
+  - `EventService.createBatch` now honors per-event aliases (`_id` or `id`) when valid, falling back to batch-level/JWT user when not provided or invalid.
+  - Prevents events from being attributed to the 24-zero fallback when clients send per-event ids.
+  - No breaking changes; existing ingestion and listing behaviors unchanged otherwise.
+## Latest Run Summary (Event Debug Logging)
+- Date: 2025-11-03
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~7.4 s
+- Notes:
+  - Added debug logs to `EventController` (`POST /events`, `POST /events/tracking-event`) to print alias sources and the resolved `userId` used for attribution.
+  - Added batch-level summary logs in `EventService.createBatch` reporting inserted count, batch `userId`, per‑event alias override count, and fallback usage.
+  - No functional changes to ingestion; all suites remain green.

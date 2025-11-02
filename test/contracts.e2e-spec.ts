@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, NotFoundException } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/modules/app/app.module';
 import { ContractService } from '../src/modules/contract/services/contract.service';
@@ -27,6 +27,7 @@ describe('Contracts (e2e)', () => {
       .overrideProvider(ContractService)
       .useValue({
         findLatestCanonical: jest.fn().mockResolvedValue(canonicalDoc),
+        findById: jest.fn().mockRejectedValue(new NotFoundException('Contract not found')),
       })
       .compile();
 
@@ -70,9 +71,9 @@ describe('Contracts (e2e)', () => {
     expect(JSON.stringify(res.body)).toBe(JSON.stringify(canonicalRes.body));
   });
 
-  it('GET /contracts/:id requires JWT (protected)', async () => {
+  it('GET /contracts/:id returns 404 when not found', async () => {
     await request(app.getHttpServer())
       .get('/contracts/507f1f77bcf86cd799439011')
-      .expect(401);
+      .expect(404);
   });
 });

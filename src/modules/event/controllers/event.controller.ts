@@ -5,7 +5,9 @@ import {
   Post,
   Request,
   Query,
+  Logger,
 } from '@nestjs/common';
+import { Types as MongooseTypes } from 'mongoose';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EventService } from '../services/event.service';
 import { InsertedCountDto } from '../dto/inserted-count.dto';
@@ -19,6 +21,7 @@ import {
 @ApiTags('events')
 @Controller('events')
 export class EventController {
+  private readonly logger = new Logger(EventController.name);
   constructor(private readonly eventService: EventService) {}
 
   @Post()
@@ -29,7 +32,23 @@ export class EventController {
     type: InsertedCountDto,
   })
   async createEvents(@Body() body: CreateEventsBatchDto, @Request() req: any) {
-    const uid = req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000';
+    const aliasTop =
+      (body as any)?.userId ?? (body as any)?._id ?? (body as any)?.id;
+    const aliasEvent =
+      Array.isArray(body?.events) && body.events.length > 0
+        ? (body.events[0] as any)?.userId ??
+          (body.events[0] as any)?._id ??
+          (body.events[0] as any)?.id
+        : undefined;
+    const candidate =
+      aliasTop ??
+      aliasEvent ??
+      req?.user?.id ??
+      process.env.PUBLIC_EVENTS_USER_ID ??
+      '000000000000000000000000';
+    const uid = MongooseTypes.ObjectId.isValid(candidate)
+      ? candidate
+      : process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000';
     return this.eventService.createBatch(uid, body.events);
   }
 
@@ -41,7 +60,25 @@ export class EventController {
     type: InsertedCountDto,
   })
   async createSingleEvent(@Body() body: EventDto, @Request() req: any) {
-    const uid = req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000';
+    const aliasUid =
+      (body as any)?.userId ?? (body as any)?._id ?? (body as any)?.id;
+    const candidate =
+      aliasUid ??
+      req?.user?.userId ??
+      process.env.PUBLIC_EVENTS_USER_ID ??
+      '000000000000000000000000';
+    const uid = MongooseTypes.ObjectId.isValid(candidate)
+      ? candidate
+      : process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000';
+    this.logger.log(
+      `POST /events/tracking-event: eventType=${String(
+        (body as any)?.eventType || 'unknown',
+      )}, componentId=${String(
+        (body as any)?.componentId || 'null',
+      )}, alias=${String(aliasUid || 'null')}, jwtUser=${String(
+        req?.user?.userId || 'null',
+      )}, candidate=${String(candidate)}, resolvedUid=${String(uid)}`,
+    );
     return this.eventService.createBatch(uid, [body]);
   }
 

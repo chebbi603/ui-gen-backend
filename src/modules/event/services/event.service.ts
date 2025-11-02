@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Optional, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types as MongooseTypes } from 'mongoose';
 import { Event } from '../entities/event.entity';
@@ -6,6 +6,7 @@ import { CacheService } from '../../../common/services/cache.service';
 
 @Injectable()
 export class EventService {
+  private readonly logger = new Logger(EventService.name);
   constructor(
     @InjectModel(Event.name) private readonly eventModel: Model<Event>,
     @Optional() private readonly cache?: CacheService,
@@ -22,18 +23,35 @@ export class EventService {
       sessionId?: string;
     }>,
   ) {
-    const docs = events.map((e) => ({
-      userId: new MongooseTypes.ObjectId(userId),
-      timestamp: new Date(e.timestamp),
-      page: e.page,
-      componentId: e.componentId,
-      eventType: e.eventType,
-      data: e.data || {},
-      sessionId: e.sessionId
-        ? new MongooseTypes.ObjectId(e.sessionId)
-        : undefined,
-    }));
+    let overrideCount = 0;
+    let fallbackCount = 0;
+    const docs = events.map((e, idx) => {
+      const perAlias = (e as any)?.userId ?? (e as any)?._id ?? (e as any)?.id;
+      const isValidPerAlias = MongooseTypes.ObjectId.isValid(String(perAlias || ''));
+      const effectiveUid = isValidPerAlias ? String(perAlias) : userId;
+      if (isValidPerAlias && String(perAlias) !== String(userId)) {
+        overrideCount++;
+      } else {
+        fallbackCount++;
+      }
+      return {
+        userId: new MongooseTypes.ObjectId(effectiveUid),
+        timestamp: new Date(e.timestamp),
+        page: e.page,
+        componentId: e.componentId,
+        eventType: e.eventType,
+        data: e.data || {},
+        sessionId: e.sessionId
+          ? new MongooseTypes.ObjectId(e.sessionId)
+          : undefined,
+      };
+    });
     await this.eventModel.insertMany(docs);
+    this.logger.log(
+      `EventService.createBatch: inserted=${docs.length}, batchUid=${String(
+        userId,
+      )}, overrides=${overrideCount}, usedBatchOrInvalid=${fallbackCount}`,
+    );
     return { inserted: docs.length };
   }
 
@@ -49,6 +67,49 @@ export class EventService {
       .sort({ timestamp: -1 })
       .select({ timestamp: 1 });
     return doc?.timestamp ?? null;
+  }
+
+  /**
+   * Returns recent events for a user within a date range, limited for efficiency.
+   * Maps `componentId` to `elementId` for downstream UX analysis prompts.
+   */
+  async getRecentEvents(
+    userId: string,
+    since: Date,
+    limit: number = 100,
+  ): Promise<
+    Array<{
+      eventType: string;
+      elementId: string;
+      timestamp: string;
+      sessionId?: string;
+      page?: string;
+    }>
+  > {
+    const docs = await this.eventModel
+      .find({
+        userId: new MongooseTypes.ObjectId(userId),
+        timestamp: { $gte: since },
+      })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .select({
+        eventType: 1,
+        componentId: 1,
+        timestamp: 1,
+        sessionId: 1,
+        page: 1,
+        _id: 0,
+      })
+      .lean();
+
+    return (docs as any[]).map((d) => ({
+      eventType: String(d.eventType),
+      elementId: String(d.componentId),
+      timestamp: new Date(d.timestamp).toISOString(),
+      sessionId: d.sessionId ? String(d.sessionId) : undefined,
+      page: d.page ? String(d.page) : undefined,
+    }));
   }
 
   async aggregateByPage(
@@ -92,9 +153,7 @@ export class EventService {
 
     // Unique users
     const distinctUsers = await this.eventModel.distinct('userId', match);
-    const uniqueUsers = Array.isArray(distinctUsers)
-      ? distinctUsers.length
-      : 0;
+    const uniqueUsers = Array.isArray(distinctUsers) ? distinctUsers.length : 0;
 
     // Average session duration (approx): span per session within page/time range
     const sessionDurAgg = await this.eventModel.aggregate([

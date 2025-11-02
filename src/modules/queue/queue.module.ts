@@ -9,6 +9,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { LlmJob, LlmJobSchema } from '../llm/entities/llm-job.entity';
 import { GeminiController } from './controllers/gemini.controller';
 import { UserModule } from '../user/user.module';
+import { EventModule } from '../event/event.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UserModule } from '../user/user.module';
     LlmModule,
     ContractModule,
     UserModule,
+    EventModule,
     UserContractModule,
     MongooseModule.forFeature([{ name: LlmJob.name, schema: LlmJobSchema }]),
   ],

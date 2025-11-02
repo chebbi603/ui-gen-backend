@@ -116,7 +116,7 @@ export class SessionController {
       platform: (doc as any).platform,
       events: events.map((e: any) => ({
         id: e._id.toString(),
-        userId: e.userId.toString(),
+        userId: (e as any).userId.toString(),
         eventType: e.eventType,
         timestamp: e.timestamp.toISOString(),
         page: e.page,

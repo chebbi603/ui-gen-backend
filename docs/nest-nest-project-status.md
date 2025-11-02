@@ -152,7 +152,7 @@ Limitations
   - `dto/tracking-event.dto.ts` — Response shape for listing events.
   - `dto/inserted-count.dto.ts` — Response shape for insertion count.
 - Entities
-  - `entities/event.entity.ts` — Schema: `userId`, optional `sessionId`, `timestamp`, `page`, `componentId`, `eventType` (enum), `data`.
+  - `entities/event.entity.ts` — Schema: `userId` (reference to `User._id`), optional `sessionId`, `timestamp`, `page`, `componentId`, `eventType` (enum), `data`.
 
 Limitations
 - No pagination or query filters exposed for `/events/user/:userId`; consider adding date ranges, types, or session scoping.

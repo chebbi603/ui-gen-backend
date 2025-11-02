@@ -50,6 +50,11 @@ Example aggregated analytics payload stored in cache (`llm:analytics:{userId}`):
 - Types: `rage-click`, `form-abandonment`, `error-pattern`, `long-dwell`.
 - Each pain point includes `componentId`, a short `reason`, and supporting `metrics`.
 
+## Improvement Suggestions
+- Derived from LLM analysis of recent events and detected pain points.
+- Shape: `{ title, description, elementId?, page?, priority }` with `priority` in `low|medium|high`.
+- Returned by `POST /gemini/analyze-events` alongside `painPoints`.
+
 ## Caching
 - Key: `llm:analytics:{userId}`
 - TTL: 300 seconds
@@ -75,7 +80,7 @@ SETEX llm:analytics:64f5b7e86831d4f215d7b8d4 300 "{...json above...}"
   - Processor attaches `meta.optimizationExplanation` and stores `analytics` when present.
   - Queue processor steps:
     - Load cached analytics or compute anew.
-    - Call `GeminiClient` with composed prompt and model (`gemini-2.5-flash` default).
+    - Call `GeminiClient` with composed prompt and model from configuration (`GEMINI_MODEL`, default `gemini-2.5-flash`).
     - Validate returned contract schema; persist via `ContractService`.
     - Update job status with result `{ contractId, version }`.
 

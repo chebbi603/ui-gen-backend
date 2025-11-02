@@ -21,25 +21,33 @@ export class LlmController {
     type: ContractDto,
   })
   async generateContract(@Body() body: any, @Request() req: any) {
-    const { userId, baseContract, version } = body;
+    const { userId, _id, id, baseContract, version } = body || ({} as any);
+    const uid = userId || _id || id;
     const { json, version: nextVersion } =
       await this.llmService.generateOptimizedContract({
-        userId,
+        userId: uid,
         baseContract,
         version,
       });
     const doc = await this.contractService.create(
       json,
       nextVersion,
-      { optimizedBy: req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000' },
-      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
-      userId,
+      {
+        optimizedBy:
+          req?.user?.userId ??
+          process.env.PUBLIC_EVENTS_USER_ID ??
+          '000000000000000000000000',
+      },
+      req?.user?.userId ??
+        process.env.PUBLIC_EVENTS_USER_ID ??
+        '000000000000000000000000',
+      uid,
     );
     const createdAt = (doc as any).createdAt as Date | undefined;
     const updatedAt = (doc as any).updatedAt as Date | undefined;
     return {
       id: (doc as any)._id?.toString?.() || '',
-      userId,
+      userId: uid,
       version: (doc as any).version,
       json: (doc as any).json as Record<string, unknown>,
       createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),

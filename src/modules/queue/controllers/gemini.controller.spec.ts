@@ -3,6 +3,8 @@ import { GeminiController } from './gemini.controller';
 import { QueueService } from '../queue.service';
 import { UserService } from '../../user/services/user.service';
 import { GeminiService } from '../../llm/services/gemini.service';
+import { ConfigService } from '@nestjs/config';
+import { EventService } from '../../event/services/event.service';
 import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 
 describe('GeminiController (unit)', () => {
@@ -18,6 +20,9 @@ describe('GeminiController (unit)', () => {
     isCircuitOpen: jest.fn(),
     resetCircuitBreaker: jest.fn(),
   };
+  const mockEvent: any = {
+    getRecentEvents: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -27,6 +32,8 @@ describe('GeminiController (unit)', () => {
         { provide: QueueService, useValue: mockQueue },
         { provide: UserService, useValue: mockUser },
         { provide: GeminiService, useValue: mockGemini },
+        { provide: EventService, useValue: mockEvent },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('gemini-2.5-flash') } },
       ],
     }).compile();
 

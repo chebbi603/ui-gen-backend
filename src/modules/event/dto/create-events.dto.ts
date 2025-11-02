@@ -10,6 +10,18 @@ import {
 } from 'class-validator';
 
 export class EventDto {
+  @IsString()
+  @IsOptional()
+  userId?: string;
+
+  @IsString()
+  @IsOptional()
+  _id?: string;
+
+  @IsString()
+  @IsOptional()
+  id?: string;
+
   @IsDateString()
   timestamp: string;
 
@@ -33,6 +45,18 @@ export class EventDto {
 }
 
 export class CreateEventsBatchDto {
+  @IsString()
+  @IsOptional()
+  userId?: string;
+
+  @IsString()
+  @IsOptional()
+  _id?: string;
+
+  @IsString()
+  @IsOptional()
+  id?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => EventDto)

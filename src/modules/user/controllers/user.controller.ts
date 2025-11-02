@@ -25,6 +25,7 @@ import { UserSummaryDto } from '../dto/user-summary.dto';
 import { CacheService } from '../../../common/services/cache.service';
 import { ContractMergeService } from '../../contract/services/contract-merge.service';
 import { FlutterContractFilterService } from '../../contract/services/flutter-contract-filter.service';
+import { Types as MongooseTypes } from 'mongoose';
 
 @ApiTags('users')
 @Controller('users')
@@ -214,14 +215,21 @@ export class UserController {
     @Param('id') id: string,
     @Request() req: any,
   ): Promise<TrackingEventDTO[]> {
+    // Always query events for the route subject (selected user), not the requester
+    const targetUserId = id;
+    // Validate ObjectId format to avoid runtime casting errors
+    if (!MongooseTypes.ObjectId.isValid(targetUserId)) {
+      this.logger.warn(`Invalid userId in tracking-events: ${id}`);
+      return [];
+    }
     const list = await this.eventService.listByUser(
-      req?.user?.userId ?? id,
+      targetUserId,
       'ADMIN',
-      id,
+      targetUserId,
     );
     return list.map((e) => ({
       id: e._id.toString(),
-      userId: e.userId.toString(),
+      userId: (e as any).userId.toString(),
       eventType: e.eventType,
       timestamp: e.timestamp.toISOString(),
       page: e.page,

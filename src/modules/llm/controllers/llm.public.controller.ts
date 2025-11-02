@@ -12,15 +12,16 @@ export class LlmPublicController {
   @ApiBody({ type: GenerateContractRequestDto })
   @ApiResponse({ status: 201, description: 'Optimized contract (preview).' })
   async generateContractPreview(@Body() body: any) {
-    const { userId, baseContract, version } = body;
+    const { userId, _id, id, baseContract, version } = body || ({} as any);
+    const uid = userId || _id || id;
     const { json, version: nextVersion } =
       await this.llmService.generateOptimizedContract({
-        userId,
+        userId: uid,
         baseContract,
         version,
       });
     return {
-      userId,
+      userId: uid,
       version: nextVersion,
       json,
     };

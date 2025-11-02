@@ -237,7 +237,7 @@ export class GeminiService {
   }
 
 
-  private async callGemini(
+  async callGemini(
     userPrompt: string,
     systemPrompt: string,
   ): Promise<string> {
