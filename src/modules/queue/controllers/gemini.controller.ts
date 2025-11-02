@@ -9,12 +9,8 @@ import {
   Param,
   Post,
   Request,
-  SetMetadata,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RoleGuard } from '../../auth/guards/role-auth.guard';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { QueueService } from '../queue.service';
 import {
   CircuitBreakerResetResponseDto,
@@ -26,7 +22,6 @@ import { UserService } from '../../user/services/user.service';
 import { GeminiService } from '../../llm/services/gemini.service';
 
 @ApiTags('Gemini')
-@ApiBearerAuth('accessToken')
 @Controller('gemini')
 export class GeminiController {
   constructor(
@@ -35,8 +30,6 @@ export class GeminiController {
     private readonly geminiService: GeminiService,
   ) {}
 
-  @SetMetadata('roles', ['ADMIN'])
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @Post('generate-contract')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiBody({ type: EnqueueGeminiJobDto })
@@ -63,7 +56,6 @@ export class GeminiController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('jobs/:jobId')
   @ApiResponse({ status: 200, description: 'Job status.', type: GeminiJobStatusDto })
   @ApiResponse({ status: 404, description: 'Job not found.' })
@@ -75,8 +67,6 @@ export class GeminiController {
     return status as GeminiJobStatusDto;
   }
 
-  @SetMetadata('roles', ['ADMIN'])
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @Post('circuit-breaker/reset')
   @ApiResponse({ status: 200, description: 'Circuit breaker reset.', type: CircuitBreakerResetResponseDto })
   async resetCircuitBreaker(): Promise<CircuitBreakerResetResponseDto> {

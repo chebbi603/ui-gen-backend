@@ -5,24 +5,18 @@ import {
   Param,
   Post,
   Request,
-  UseGuards,
-  SetMetadata,
 } from '@nestjs/common';
 import { ContractService } from '../services/contract.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateContractDto } from '../dto/create-contract.dto';
 import { ContractDto } from '../dto/contract.dto';
-import { RoleGuard } from '../../auth/guards/role-auth.guard';
 
 @ApiTags('contracts')
-@ApiBearerAuth('accessToken')
 @Controller('contracts')
 export class ContractController {
   constructor(private readonly contractService: ContractService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
   @ApiBody({ type: CreateContractDto })
   @ApiResponse({
     status: 201,
@@ -35,7 +29,7 @@ export class ContractController {
       json,
       version,
       meta,
-      req.user.userId,
+      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
     );
     const createdAt = (doc as any).createdAt as Date | undefined;
     const updatedAt = (doc as any).updatedAt as Date | undefined;
@@ -51,7 +45,6 @@ export class ContractController {
   }
 
   // Constrain :id to Mongo ObjectId format to avoid matching 'canonical'
-  @UseGuards(JwtAuthGuard)
   @Get(':id([0-9a-fA-F]{24})')
   @ApiResponse({
     status: 200,
@@ -73,8 +66,6 @@ export class ContractController {
     } as ContractDto;
   }
 
-  @SetMetadata('roles', ['ADMIN'])
-  @UseGuards(JwtAuthGuard, RoleGuard)
   // Constrain :id to Mongo ObjectId format to avoid matching 'canonical'
   @Get(':id([0-9a-fA-F]{24})/history')
   @ApiResponse({ status: 200, description: 'Contract history.' })

@@ -1,14 +1,17 @@
-import { Body, Controller, Post, UseGuards, Request, BadRequestException } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RoleGuard } from '../../auth/guards/role-auth.guard';
+import {
+  Body,
+  Controller,
+  Post,
+  Request,
+  BadRequestException,
+} from '@nestjs/common';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContractBuilderService } from '../services/contract-builder.service';
 import { ContractService } from '../services/contract.service';
 import { ContractDto } from '../dto/contract.dto';
 import { validateContractJson } from '../../../common/validators/contract.validator';
 
 @ApiTags('admin')
-@ApiBearerAuth('accessToken')
 @Controller('admin')
 export class AdminContractController {
   constructor(
@@ -20,10 +23,16 @@ export class AdminContractController {
    * Generate and persist the canonical contract using the builder.
    * Returns the created record for frontend testing.
    */
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @Post('generate-canonical-contract')
-  @ApiResponse({ status: 201, description: 'Canonical contract generated.', type: ContractDto })
-  async generateCanonical(@Body() body: any, @Request() req: any): Promise<ContractDto> {
+  @ApiResponse({
+    status: 201,
+    description: 'Canonical contract generated.',
+    type: ContractDto,
+  })
+  async generateCanonical(
+    @Body() body: any,
+    @Request() req: any,
+  ): Promise<ContractDto> {
     const version = body?.version?.toString?.() || '1.0.0';
     const appName = body?.appName?.toString?.() || 'DynamicUXDemo';
 
@@ -51,11 +60,23 @@ export class AdminContractController {
     // Validate (comprehensive validator)
     const validation = validateContractJson(json);
     if (!validation.valid) {
-      throw new BadRequestException({ message: 'Invalid generated contract', errors: validation.errors });
+      throw new BadRequestException({
+        message: 'Invalid generated contract',
+        errors: validation.errors,
+      });
     }
 
     // Persist canonical (no userId)
-    const doc = await this.contracts.create(json, version, { source: 'builder', generatedBy: req.user.userId }, req.user.userId);
+    const createdBy =
+      req?.user?.userId ??
+      process.env.PUBLIC_EVENTS_USER_ID ??
+      '000000000000000000000000';
+    const doc = await this.contracts.create(
+      json,
+      version,
+      { source: 'builder', generatedBy: createdBy },
+      createdBy,
+    );
     const createdAt = (doc as any).createdAt as Date | undefined;
     const updatedAt = (doc as any).updatedAt as Date | undefined;
     return {

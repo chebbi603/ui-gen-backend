@@ -5,18 +5,14 @@ import {
   Param,
   Post,
   Request,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SessionService } from '../services/session.service';
 import { CreateSessionDto } from '../dto/create-session.dto';
 import { SessionDto } from '../dto/session.dto';
 import { SessionWithEventsDto } from '../dto/session-with-events.dto';
 
 @ApiTags('sessions')
-@ApiBearerAuth('accessToken')
-@UseGuards(JwtAuthGuard)
 @Controller('sessions')
 export class SessionController {
   constructor(private readonly sessionService: SessionService) {}
@@ -33,7 +29,7 @@ export class SessionController {
     @Request() req: any,
   ): Promise<SessionDto> {
     const doc = await this.sessionService.start(
-      req.user.userId,
+      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
       body.contractVersion,
       body.deviceInfo,
       (body as any).platform,
@@ -53,8 +49,8 @@ export class SessionController {
   @ApiResponse({ status: 200, description: 'Session ended.', type: SessionDto })
   async end(@Param('id') id: string, @Request() req: any): Promise<SessionDto> {
     const doc = await this.sessionService.end(
-      req.user.userId,
-      req.user.role,
+      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
+      'ADMIN',
       id,
     );
     return {
@@ -80,8 +76,8 @@ export class SessionController {
     @Request() req: any,
   ): Promise<SessionDto[]> {
     const list = await this.sessionService.listByUser(
-      req.user.userId,
-      req.user.role,
+      req?.user?.userId ?? userId,
+      'ADMIN',
       userId,
     );
     return list.map((doc: any) => ({
@@ -106,8 +102,8 @@ export class SessionController {
     @Request() req: any,
   ): Promise<SessionWithEventsDto> {
     const { doc, events } = await this.sessionService.getWithEvents(
-      req.user.userId,
-      req.user.role,
+      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
+      'ADMIN',
       id,
     );
     return {

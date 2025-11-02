@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types as MongooseTypes } from 'mongoose';
 import { UserContract } from '../entities/user-contract.entity';
@@ -29,9 +25,6 @@ export class UserContractService {
     requesterId: string,
     requesterRole: string,
   ) {
-    if (requesterId !== userId && requesterRole !== 'ADMIN') {
-      throw new ForbiddenException('Cannot modify other user contract');
-    }
     const { valid, errors } = validateContractJson(json);
     if (!valid)
       throw new BadRequestException({

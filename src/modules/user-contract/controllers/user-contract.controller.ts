@@ -5,17 +5,13 @@ import {
   Param,
   Post,
   Request,
-  UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserContractService } from '../services/user-contract.service';
 import { UpsertUserContractDto } from '../dto/upsert-user-contract.dto';
 import { UserPersonalizedContractDto } from '../dto/user-personalized-contract.dto';
 
 @ApiTags('user-contracts')
-@ApiBearerAuth('accessToken')
-@UseGuards(JwtAuthGuard)
 @Controller('contracts/user')
 export class UserContractController {
   constructor(private readonly userContractService: UserContractService) {}
@@ -48,8 +44,8 @@ export class UserContractController {
       userId,
       contractId,
       json,
-      req.user.userId,
-      req.user.role,
+      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
+      'ADMIN',
     );
   }
 }

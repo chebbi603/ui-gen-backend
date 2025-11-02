@@ -38,7 +38,7 @@ Swagger: `http://localhost:8081/api`
     - Issues JWT via `JwtService`.
 - Guards/Strategies:
   - `LocalAuthGuard` (login credentials).
-  - `JwtAuthGuard` (protects non-auth endpoints via Bearer token).
+- `JwtAuthGuard` (available but many endpoints are now public).
   - `RoleGuard` (ADMIN-only routes in User module).
 - Notes: All non-auth endpoints require `Authorization: Bearer <token>`.
 
@@ -119,15 +119,16 @@ Caching
 
 - Purpose: Event/analytics ingestion and listing per user.
 - Controllers:
-  - `EventController` (JWT)
-    - `POST /events` — ingest event batch for authenticated user.
+- `EventController` (Public ingestion and reads)
+    - `POST /events` — ingest event batch (public in MVP; no JWT required).
       - Request DTO: `CreateEventsBatchDto`
       - Response DTO: `InsertedCountDto`.
-    - `POST /events/tracking-event` — ingest a single tracking event for authenticated user.
+    - `POST /events/tracking-event` — ingest a single tracking event (public in MVP; no JWT required).
       - Request DTO: `EventDto`
       - Response DTO: `InsertedCountDto`.
     - `GET /events/user/:userId` — list events by user; requires ownership or ADMIN.
       - Response DTO: `TrackingEventDto[]`
+    - `GET /events/aggregate` — aggregated statistics; requires ADMIN.
 - Services:
   - `EventService` — batch create and query by user.
 - DTOs:
@@ -141,7 +142,7 @@ Caching
 
 - Purpose: Generate optimized contracts leveraging event analytics.
 - Controllers:
-  - `LlmController` (JWT)
+- `LlmController` (Public)
     - `POST /llm/generate-contract` — generates and persists an optimized contract.
       - Request DTO: `GenerateContractRequestDto`
       - Response DTO: `ContractDto`
@@ -159,7 +160,7 @@ Dependencies:
 
 - Purpose: Track user sessions for behavioral analytics, pain point detection, and personalization.
 - Controllers:
-  - `SessionController` (JWT)
+- `SessionController` (Public)
     - `POST /sessions/start` — start a session for the authenticated user.
     - `POST /sessions/:id/end` — end a session; owner or ADMIN only.
     - `GET /sessions/user/:userId` — list sessions for a user; owner or ADMIN.

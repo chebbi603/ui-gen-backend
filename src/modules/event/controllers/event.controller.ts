@@ -4,15 +4,11 @@ import {
   Get,
   Post,
   Request,
-  UseGuards,
   Query,
-  SetMetadata,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { EventService } from '../services/event.service';
 import { InsertedCountDto } from '../dto/inserted-count.dto';
-import { RoleGuard } from '../../auth/guards/role-auth.guard';
 import {
   CreateEventsBatchDto,
   EventDto,
@@ -21,8 +17,6 @@ import {
 } from '../dto/index';
 
 @ApiTags('events')
-@ApiBearerAuth('accessToken')
-@UseGuards(JwtAuthGuard)
 @Controller('events')
 export class EventController {
   constructor(private readonly eventService: EventService) {}
@@ -35,7 +29,8 @@ export class EventController {
     type: InsertedCountDto,
   })
   async createEvents(@Body() body: CreateEventsBatchDto, @Request() req: any) {
-    return this.eventService.createBatch(req.user.userId, body.events);
+    const uid = req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000';
+    return this.eventService.createBatch(uid, body.events);
   }
 
   @Post('/tracking-event')
@@ -46,12 +41,11 @@ export class EventController {
     type: InsertedCountDto,
   })
   async createSingleEvent(@Body() body: EventDto, @Request() req: any) {
-    return this.eventService.createBatch(req.user.userId, [body]);
+    const uid = req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000';
+    return this.eventService.createBatch(uid, [body]);
   }
 
   @Get('aggregate')
-  @SetMetadata('roles', ['ADMIN'])
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @ApiResponse({
     status: 200,
     description: 'Aggregate events statistics.',

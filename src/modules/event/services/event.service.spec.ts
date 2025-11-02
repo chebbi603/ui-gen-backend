@@ -52,14 +52,17 @@ describe('EventService (unit)', () => {
     expect(res).toEqual({ inserted: 2 });
   });
 
-  it('listByUser forbids non-owner non-admin', async () => {
-    await expect(
-      service.listByUser(
-        '507f1f77bcf86cd799439011',
-        'USER',
-        '507f1f77bcf86cd799439012',
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+  it('listByUser returns events for any requester (public)', async () => {
+    const sort = jest.fn().mockResolvedValue(['e1']);
+    MockModel.find.mockReturnValue({ sort } as any);
+    const res = await service.listByUser(
+      '507f1f77bcf86cd799439011',
+      'USER',
+      '507f1f77bcf86cd799439012',
+    );
+    expect(MockModel.find).toHaveBeenCalled();
+    expect(sort).toHaveBeenCalledWith({ timestamp: -1 });
+    expect(res).toEqual(['e1']);
   });
 
   it('listByUser returns find() results for owner or admin', async () => {

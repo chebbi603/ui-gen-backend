@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types as MongooseTypes } from 'mongoose';
 import { Session } from '../entities/session.entity';
@@ -36,18 +32,12 @@ export class SessionService {
       new MongooseTypes.ObjectId(sessionId),
     );
     if (!doc) throw new NotFoundException('Session not found');
-    if (doc.userId.toString() !== requesterId && requesterRole !== 'ADMIN') {
-      throw new ForbiddenException('Cannot end other user session');
-    }
     doc.endedAt = new Date();
     await doc.save();
     return doc;
   }
 
   async listByUser(requesterId: string, requesterRole: string, userId: string) {
-    if (requesterId !== userId && requesterRole !== 'ADMIN') {
-      throw new ForbiddenException('Cannot list other user sessions');
-    }
     return this.sessionModel
       .find({ userId: new MongooseTypes.ObjectId(userId) })
       .sort({ startedAt: -1 });
@@ -58,9 +48,6 @@ export class SessionService {
       new MongooseTypes.ObjectId(sessionId),
     );
     if (!doc) throw new NotFoundException('Session not found');
-    if (doc.userId.toString() !== requesterId && requesterRole !== 'ADMIN') {
-      throw new ForbiddenException('Cannot view other user session');
-    }
     return doc;
   }
 

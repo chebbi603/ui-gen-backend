@@ -37,17 +37,18 @@ describe('UserContractService (unit)', () => {
     expect(res).toBe('doc');
   });
 
-  it('upsertUserContract denies when requester is not owner nor admin', async () => {
+  it('upsertUserContract allows non-owner and upserts when json is valid', async () => {
     (validateContractJson as jest.Mock).mockReturnValue({ valid: true });
-    await expect(
-      service.upsertUserContract(
-        '507f1f77bcf86cd799439011',
-        undefined,
-        { a: 1 },
-        '507f1f77bcf86cd799439012',
-        'USER',
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    MockModel.findOneAndUpdate.mockResolvedValue({ _id: 'y', json: { ok: true } });
+    const res = await service.upsertUserContract(
+      '507f1f77bcf86cd799439011',
+      undefined,
+      { screens: [] },
+      '507f1f77bcf86cd799439012',
+      'USER',
+    );
+    expect(MockModel.findOneAndUpdate).toHaveBeenCalled();
+    expect(res).toEqual({ _id: 'y', json: { ok: true } });
   });
 
   it('upsertUserContract validates json and upserts when allowed', async () => {

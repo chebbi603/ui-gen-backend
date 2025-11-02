@@ -5,8 +5,21 @@ export default registerAs(
   (): Record<string, any> => {
     const baseUrl = process.env.MONGO_URL ?? '';
     const dbName = process.env.MONGO_DATABASE_NAME;
-    // If a DB name is provided, append it; otherwise use the base URL as-is
-    const uri = dbName ? `${baseUrl}/${dbName}` : baseUrl;
+    // Append DB name only if base URL has no existing path component
+    let uri = baseUrl;
+    try {
+      const parsed = new URL(baseUrl);
+      const hasPath = !!parsed.pathname && parsed.pathname !== '/';
+      if (dbName && !hasPath) {
+        parsed.pathname = `/${dbName}`;
+        uri = parsed.toString();
+      }
+    } catch (_e) {
+      // Fallback: naive append if no slash exists and dbName provided
+      if (dbName && baseUrl && !baseUrl.includes('/')) {
+        uri = `${baseUrl}/${dbName}`;
+      }
+    }
     return { uri };
   },
 );

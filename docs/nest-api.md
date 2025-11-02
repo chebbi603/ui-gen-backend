@@ -67,6 +67,26 @@ Notes:
 
 ---
 
+## Events
+
+- Ingestion (public)
+  - `POST /events` — batch insert tracking events (no authentication required in MVP).
+  - `POST /events/tracking-event` — single tracking event insert (no authentication required in MVP).
+  - Example:
+    ```bash
+    curl -s -X POST http://localhost:8081/events \
+      -H 'Content-Type: application/json' \
+      -d '{ "events": [ { "timestamp": "2025-11-02T12:00:00.000Z", "page": "home", "componentId": "btn_start", "eventType": "tap", "data": {} } ] }'
+    ```
+  - Behavior: if unauthenticated, events are stored under a fallback user id.
+
+- Aggregation (authenticated)
+- `GET /events/aggregate` — returns aggregated stats; Public.
+  - Header: `Authorization: Bearer <token>`
+  - Query: `page`, `timeRange` (`all|24h|7d|30d`), optional `eventType`.
+
+---
+
 ## Users
 
 - `GET /users/me` (JWT)
@@ -183,7 +203,7 @@ Notes:
     ```
   - **Response** (`InsertedCountDto`): `{ "inserted": 1 }`
 
-- `GET /events/user/:userId` (JWT)
+- `GET /events/user/:userId` (Public)
   - Lists events for a specific user. Only the user or ADMIN may read.
   - Response DTO: `TrackingEventDto[]`
 
@@ -191,7 +211,7 @@ Notes:
 
 ## LLM
 
-- `POST /llm/generate-contract` (JWT)
+- `POST /llm/generate-contract` (Public)
   - **Process**: This endpoint generates and persists an optimized contract by first aggregating user analytics. It checks for a cached summary (`llm:analytics:{userId}`), and if not found, computes and caches it. The analytics include pain points (e.g., rage clicks, error patterns) and usage stats. This data is used to build a prompt for the configured LLM provider (`gemini`, `openai`, etc.). If the provider call succeeds, the new contract is persisted; otherwise, a heuristic fallback is used. The resulting contract `meta` field includes `optimizationExplanation` and `analytics` from the generation process when available.
   - **Technical flow**:
     - Validate `GenerateContractRequestDto` and user authorization.
@@ -240,7 +260,7 @@ Notes:
 
 ### Gemini (Queue)
 
-- `POST /gemini/generate-contract` (JWT + ADMIN)
+- `POST /gemini/generate-contract` (Public)
   - **Process**: Validates input and checks the Gemini circuit breaker state. If closed, enqueues a generation job in the queue and returns `202 Accepted` with the job ID. The processor will compute analytics (with Redis cache for `llm:analytics:{userId}`), call Gemini, persist the contract, and attach generation metadata. If the circuit is open (e.g., due to repeated failures), responds with `503 Service Unavailable`.
   - **Request Payload** (`EnqueueGeminiJobDto`):
     ```json
@@ -252,7 +272,7 @@ Notes:
     ```
   - Circuit breaker: `503` with body `{ "error": { "code": "CIRCUIT_OPEN", "message": "Gemini temporarily disabled" } }`.
 
-- `GET /gemini/jobs/:jobId` (JWT)
+- `GET /gemini/jobs/:jobId` (Public)
   - **Process**: Reads job state from the queue store and returns status, progress, timestamps, and result/error when available.
   - **Response** (`GeminiJobStatusDto`):
     ```json
@@ -274,7 +294,7 @@ Notes:
     ```
   - Status values: `queued`, `processing`, `completed`, `failed`.
 
-- `POST /gemini/circuit-breaker/reset` (JWT + ADMIN)
+- `POST /gemini/circuit-breaker/reset` (Public)
   - **Process**: Forces the circuit breaker to a closed state, allowing new jobs to enqueue.
   - **Response**:
     ```json
@@ -299,7 +319,7 @@ Global filter standardizes errors to:
 
 Common statuses:
 - 400: Validation errors (DTO or contract schema)
-- 401: Missing/invalid JWT
+- 401: Missing/invalid JWT (applies only to protected auth endpoints)
 - 403: Unauthorized action (role or ownership)
 - 404: Resource not found
 
@@ -307,21 +327,21 @@ Common statuses:
 
 ## Sessions
 
-- `POST /sessions/start` (JWT)
+- `POST /sessions/start` (Public)
   - Starts a session for the authenticated user.
   - Request DTO: `CreateSessionDto`
   - Response DTO: `SessionDto`
   - Request may include optional `platform` (e.g., `web`, `ios`, `android`).
 
-- `POST /sessions/:id/end` (JWT)
+- `POST /sessions/:id/end` (Public)
   - Ends a session; only owner or ADMIN can end.
   - Response DTO: `SessionDto`
 
-- `GET /sessions/user/:userId` (JWT)
+- `GET /sessions/user/:userId` (Public)
   - Lists sessions for a user; only owner or ADMIN.
   - Response DTO: `SessionDto[]`
 
-- `GET /sessions/:id` (JWT)
+- `GET /sessions/:id` (Public)
   - Returns a session with its associated events.
   - Response DTO: `SessionWithEventsDto`
   - Responses include optional `platform` when provided at session start.

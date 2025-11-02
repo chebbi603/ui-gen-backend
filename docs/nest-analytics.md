@@ -62,7 +62,7 @@ SETEX llm:analytics:64f5b7e86831d4f215d7b8d4 300 "{...json above...}"
 ```
 
 ## Generation Flows
-- Synchronous: `POST /llm/generate-contract` (JWT)
+- Synchronous: `POST /llm/generate-contract` (Public)
   - Uses aggregated analytics and either provider-backed generation (when configured) or heuristic fallback.
   - Persists result via `ContractService` and returns standardized `ContractDto`.
   - Prompt composition (technical):

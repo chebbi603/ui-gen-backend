@@ -6,6 +6,8 @@ This document describes the expected shape of a canonical UX contract generated 
 - `meta`: App metadata, including `appName`, `version` (semver), `schemaVersion`, `generatedAt`.
 - `dataModels`: Map of models with `primaryKey` and `fields` definitions.
 - `services`: Array of service configs with `name`, `baseUrl`, and `endpoints`.
+  - Endpoint fields (canonical): `path`, `method`, `auth`, `queryParams`, `requestSchema`, `responseSchema`, `caching`, `retryPolicy`.
+  - Synonyms accepted by parser but discouraged: `authRequired` (use `auth`), `params` (use `queryParams`), `response` (use `responseSchema`), `retry` (use `retryPolicy`).
 - `pagesUI`: UI configuration including `routes`, `bottomNavigation`, and `pages`.
 - `state`: Global and per-page state definitions with `type` and `persistence`.
 - `themingAccessibility`: Theme tokens for `light` and `dark` modes used via `${theme.*}` references.

@@ -1,12 +1,78 @@
 Project: nestjs-mongo (NestJS)
 # Jest Test Results
 
-## Latest Run Summary
-- Command: `npm test`
+## Latest Run Summary — Unit
+- Date: 2025-11-02
+- Command: `npm test --silent`
 - Test Suites: 20 passed, 20 total
 - Tests: 66 passed, 66 total
 - Snapshots: 0 total
-- Time: ~6.5 s
+- Time: ~9.9 s
+- Notes:
+  - Queue and Gemini paths log expected errors during retries (validation/network), but unit tests assert circuit breaker behavior correctly.
+  - Benign warning: `--localstorage-file` without a valid path during queue tests.
+
+## Latest Run Summary — E2E
+- Date: 2025-11-02
+- Command: `npm run test:e2e --silent`
+- Test Suites: 1 failed, 1 passed, 2 total
+- Tests: 1 failed, 3 passed, 4 total
+- Snapshots: 0 total
+- Time: ~3.7 s
+- Failure:
+  - `GET /contracts/:id` returned 500 due to `ContractController.getById` calling `contractService.findById` (undefined in current stub), expected 401.
+- Notes:
+  - Known teardown warning about worker forced exit; unrelated to assertions.
+  - This failure is outside the current documentation task scope and is recorded here for follow-up.
+
+## Latest Run Summary (Songs Row Overflow Fix alignment)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~9.1 s
+- Notes:
+  - Backend continues serving updated canonical contract including `durationText` and `overflow: "ellipsis"`.
+  - Warnings about `--localstorage-file` seen during queue tests are benign in Jest.
+  - No backend code changes were necessary; alignment was contract-only.
+
+## Latest Run Summary
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.8 s
+- Notes:
+  - Body parsing fix: Enabled `express.json()` and `express.urlencoded({ extended: true })` in `src/main.ts` before the request logger. `req.body` is now populated for `POST` requests (e.g., `/auth/login`).
+  - Contract alignment: Updated `canonical-contract-v1.json` to model `AuthService.login` with `requestSchema` (email, password) instead of `queryParams`, and reflect actual response fields (`accessToken`, `refreshToken`, `_id`, `role`, `username`, `name`).
+  - All unit tests green; no regressions.
+
+## Latest Run Summary (Refresh & Logout Schema Alignment)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~5.4 s
+- Notes:
+  - Added `AuthService.refresh` endpoint in canonical contract with `requestSchema { refreshToken }` and `responseSchema { accessToken, refreshToken }` to match `auth.service.ts`.
+  - Updated `AuthService.logout` to accept `requestSchema { refreshToken }` and return `{ ok: true }` in `responseSchema`, aligning with backend implementation.
+  - Corrected `ContentService.getDetails` path from `/{id}` to `/item` with `id` as required query param to avoid unsupported path placeholders in Flutter client.
+  - All suites green; validator still passes the updated contract.
+
+## Latest Run Summary (Auth Login Response Fields)
+- Date: 2025-11-01
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.1 s
+- Notes:
+  - Updated `AuthService.login` to include `username` and `name` in response alongside `_id`, `role`, `accessToken`, and `refreshToken`.
+  - No test changes required; existing `auth.service.spec.ts` and `auth.controller.spec.ts` assertions remain compatible.
+  - Confirms compatibility with Flutter client mapping to `state.user`.
 
 ## Latest Run Summary (Post Contract Cleanup)
 - Command: `npm run test`
@@ -108,6 +174,19 @@ Project: nestjs-mongo (NestJS)
   - `GET /contracts/:id` returns `401` when unauthenticated.
 - Environment notes:
   - E2E Jest config maps `jsonwebtoken` to a local mock and stubs Redis (`ioredis`) to prevent import-time errors and external dependencies.
+
+## Latest Run — 2025-11-02 (Post MVP public events)
+
+- Unit
+  - Command: `npm test --silent`
+  - Result: 66 passed, 0 failed, 20 suites
+  - Notes: Standard warnings about `--localstorage-file` observed; benign.
+
+- E2E
+  - Command: `npm run test:e2e --silent`
+  - Result: 4 passed, 0 failed, 2 suites
+  - Notes: Worker forced-exit warning observed; no failing tests.
+  - Scope: Canonical endpoints remain public. Events (ingest and reads), LLM generate, Gemini queue endpoints, and Sessions are now Public. JWT is only required for auth-specific flows.
 
 ## Redis Cache Verification (2025-11-01)
 
@@ -220,3 +299,56 @@ Time:        ~6.5 s
     - Logs method, URL, sanitized headers (Authorization redacted), and body.
   - Kept `CanonicalErrorFilter` active to return structured, detailed errors.
   - No test failures; logging middleware is non-invasive for unit tests.
+  
+## Latest Run Summary (Public Endpoints Refactor)
+- Date: 2025-11-02
+- Command: `npm test -- --verbose`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~5.0 s
+- Notes:
+  - Updated controllers and services to remove `JwtAuthGuard`, `RoleGuard`, and ownership checks from:
+    - EventController (ingestion and aggregate; listing reads via service)
+    - GeminiController (enqueue, status, circuit-breaker)
+    - LlmController (generate-contract)
+    - AdminContractController (builder endpoint)
+    - SessionService and SessionController (end/list/get now public)
+  - Updated unit tests to reflect public behavior:
+    - `event.service.spec.ts`: listByUser is now public
+    - `user-contract.service.spec.ts`: upsert is public for non-owner
+  - All suites green; no regressions.
+
+## Latest Run Summary (Routine regression after public refactor)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~6.8 s
+- Notes:
+  - Observed expected error logs in `GeminiGenerationProcessor` tests for simulated network/validation failures; suites still pass.
+  - Confirms stability after public endpoint changes across Events, Gemini, LLM, Sessions.
+  - No new failures or flaky tests detected.
+
+## Latest Run Summary (Disable dummy event seeding by default)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Time: ~7.3 s
+- Notes:
+  - Backend updated to gate sample event seeding behind `SEED_SAMPLE_EVENTS=true`; default behavior no longer inserts dummy analytics events.
+  - No test changes required; unit suites for Event, Queue, LLM, Auth, User continue to pass.
+  - Confirms no regressions in ingestion (`POST /events`) and analytics aggregation after seeding change.
+## Latest Run Summary (Startup Env Loading & Analytics Persistence)
+- Date: 2025-11-02
+- Command: `npm run test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 66 passed, 66 total
+- Snapshots: 0 total
+- Notes:
+  - Early `.env` loading added via `dotenv/config` in `src/main.ts`.
+  - In-memory Mongo disabled when `.env` contains `USE_MEMORY_MONGO=false` and a valid `MONGO_URL`.
+  - Ingestion verified: `POST /events` returns `{ inserted: N }`; `GET /events/aggregate` returns stats.

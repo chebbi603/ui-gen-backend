@@ -1,11 +1,34 @@
+import 'dotenv/config';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
 
 import { CanonicalErrorFilter } from './common/filters/canonical-error.filter';
 import IORedis from 'ioredis';
 import * as compression from 'compression';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+
+async function ensureMemoryMongoIfRequested() {
+  try {
+    const useMemory = (process.env.USE_MEMORY_MONGO || '').toLowerCase() === 'true';
+    const mongoUrl = process.env.MONGO_URL || '';
+    if (useMemory || !mongoUrl || mongoUrl.startsWith('http://memory') || mongoUrl.startsWith('memory:')) {
+      const mem = await MongoMemoryServer.create();
+      const uri = mem.getUri();
+      process.env.MONGO_URL = uri;
+      if (!process.env.MONGO_DATABASE_NAME || process.env.MONGO_DATABASE_NAME.trim() === '') {
+        process.env.MONGO_DATABASE_NAME = 'ui_customisation';
+      }
+      // eslint-disable-next-line no-console
+      console.log(`[MemoryMongo] In-memory MongoDB started at ${uri}`);
+    }
+  } catch (e: any) {
+    // eslint-disable-next-line no-console
+    console.warn('[MemoryMongo] Failed to initialize in-memory MongoDB:', e?.message || e);
+  }
+}
 
 async function bootstrap() {
   // Shim Buffer.SlowBuffer for older libs expecting it (e.g., buffer-equal-constant-time)
@@ -24,6 +47,9 @@ async function bootstrap() {
   const { AppModule } = await import('./modules/app/app.module');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  // Ensure body is parsed before logging and guards/interceptors
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
   // Debug request logging: log method, URL, headers, and body
   app.use((req: any, _res: any, next: () => void) => {
     try {
@@ -113,4 +139,10 @@ async function bootstrap() {
   }
   await app.listen(configService.get<string>('server.port') || 8081);
 }
-bootstrap();
+ensureMemoryMongoIfRequested()
+  .then(() => bootstrap())
+  .catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('[Bootstrap] Pre-initialization failed, continuing without memory Mongo:', err?.message || err);
+    bootstrap();
+  });

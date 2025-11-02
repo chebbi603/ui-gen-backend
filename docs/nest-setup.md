@@ -13,6 +13,7 @@ Copy `.env.example` to `.env` and set:
 - `MONGO_DATABASE_NAME` (e.g., `blog`)
 - `JWT_SECRET` (required in production; strong random string)
 - `SEED_ENABLED=true` (optional; enables dev seeding)
+ - `SEED_SAMPLE_EVENTS=true` (optional; enables seeding of a couple of sample analytics events; disabled by default)
 
 Optional:
 - `RABBITMQ_URL`, `RABBITMQ_TOPIC`
@@ -31,6 +32,29 @@ Redis & Caching:
 - Redis is optional; when configured, read endpoints leverage a lightweight cache (`CacheService`) to reduce DB load.
 - Canonical and user contract endpoints set `Cache-Control` headers and use Redis keys `contracts:canonical` and `contracts:user:{id}`.
 - TTL defaults to 300 seconds for common reads; LLM analytics are cached under `llm:analytics:{userId}` with TTL 300 seconds.
+
+## MongoDB Modes: Memory vs Persistent (important)
+- The server can auto-start an in-memory MongoDB for convenience.
+- Triggered when `USE_MEMORY_MONGO=true` or `MONGO_URL` is missing/points to a memory URI.
+- In-memory mode is ephemeral; data (including analytics events) does not persist.
+
+### Use a Persistent Database
+Set the following in `.env` to ensure data is saved:
+```
+USE_MEMORY_MONGO=false
+MONGO_URL=mongodb://localhost:27017
+MONGO_DATABASE_NAME=ui_customisation
+```
+- If your `MONGO_URL` already includes a path (database name), `MONGO_DATABASE_NAME` is optional.
+- Example combined URL: `MONGO_URL=mongodb://localhost:27017/ui_customisation`.
+
+### Detecting Memory Mode
+- Startup logs show: `[MemoryMongo] In-memory MongoDB started at mongodb://127.0.0.1:<port>/...` when memory mode is active.
+- If you see this and expect persistence, set `USE_MEMORY_MONGO=false` and provide a real `MONGO_URL`.
+
+### Why Events Seem Missing
+- When running in memory mode, collections vanish on server stop; local folders may appear empty.
+- To persist analytics events, always run with a real MongoDB URL as shown above.
 - Caching gracefully disables when Redis is unavailable; `CacheService` logs warnings and falls back to direct reads.
 - Redis config values are provided via `redis.*` config keys, populated from env: `REDIS_URL` or host/port/password/db.
 
@@ -80,7 +104,7 @@ CORS is enabled globally. To restrict origins, update server bootstrap to pass o
 ## Roles & Access
 
 - Admin-only routes use role guard (e.g., `/users/:id`, user deletion, and selected contract mutation endpoints). `/users` requires JWT but not ADMIN.
-- Event and user-contract endpoints enforce ownership or ADMIN role.
+- MVP change: Event ingestion endpoints are PUBLIC (no JWT required). Listing user events is also PUBLIC in this refactor.
 
 ## Contract JSON Requirements
 
@@ -106,3 +130,19 @@ CORS is enabled globally. To restrict origins, update server bootstrap to pass o
 - Unit: `npm run test`
 - E2E: `npm run test:e2e`
   - Uses `test/jest-e2e.json` and mocks `jsonwebtoken`/`ioredis` for stability.
+
+## Mongo Persistence vs Memory Mode
+
+- Purpose: Ensure analytics events persist to your real MongoDB and avoid ephemeral in-memory fallback.
+- Behavior:
+  - The server can auto-start an in-memory MongoDB if `USE_MEMORY_MONGO=true` or if `MONGO_URL` is missing/invalid at bootstrap.
+  - `.env` is now loaded early via `dotenv/config` in `src/main.ts`, so values from `.env` are respected before the memory check.
+- Recommended `.env` (no shell vars needed):
+  - `USE_MEMORY_MONGO=false`
+  - `MONGO_URL=mongodb://127.0.0.1:27017`
+  - `MONGO_DATABASE_NAME=thesis`
+- Verification steps:
+  - Start dev: `npm run start:dev`
+  - Confirm logs do not include `[MemoryMongo] In-memory MongoDB started ...`.
+  - Insert sample: `curl -s -X POST http://localhost:8081/events -H 'Content-Type: application/json' -d '{"events":[{"eventType":"tap","userId":"000000000000000000000000","timestamp":1730000000000,"data":{}}]}'`.
+  - Read back: `curl -s http://localhost:8081/events/aggregate`.

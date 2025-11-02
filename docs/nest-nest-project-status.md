@@ -47,12 +47,13 @@ Limitations
 
 - `src/modules/app/services/seed.service.ts`
   - Seeding logic executed on application bootstrap, guarded by `NODE_ENV` and `SEED_ENABLED` env var.
-  - Seeds: demo user, a default canonical contract (`1.0.0`), personalized user contract, and sample analytics events.
+  - Seeds: demo user, a default canonical contract (`1.0.0`), personalized user contract.
+  - Sample analytics events: disabled by default; can be enabled explicitly with `SEED_SAMPLE_EVENTS=true`.
   - Idempotent: checks for existing data before insertion.
 
 Limitations
 - Seeding runs unless disabled or in production; ensure `SEED_ENABLED=false` in production to avoid unintended data.
-- Seeded sample data is simplistic and not representative of complex real-world schemas.
+- Seeded sample data (when `SEED_SAMPLE_EVENTS=true`) is simplistic and not representative of complex real-world schemas; keep it disabled for realistic analytics ingestion.
 
 ## Modules Overview (by file)
 
@@ -89,7 +90,7 @@ Limitations
     - `GET /users/:id` (JWT + ADMIN) — Fetch user by id.
     - `GET /users/:id/contract` (JWT) — Latest personalized contract for the user; falls back to canonical when none exists; cached 5 minutes when Redis is configured.
     - `POST /users/:id/contract` (JWT + ADMIN) — Create/update user’s latest contract; returns standardized `ContractDto` including `id` and `meta`; invalidates user contract cache.
-    - `GET /users/:id/tracking-events` (JWT) — List user’s events; owner or ADMIN.
+    - `GET /users/:id/tracking-events` (Public) — List user’s events; public read.
     - `PATCH /users/:id` (JWT) — Update user fields.
     - `DELETE /users/:id` (JWT + ADMIN) — Delete user.
   - `controllers/user.controller.spec.ts` — Tests for controller behaviors.
@@ -160,7 +161,7 @@ Limitations
 ### Session Module — `src/modules/session`
 - `session.module.ts` — Registers controller/service and schema; imports `EventModule` to fetch events.
 - Controllers
-  - `controllers/session.controller.ts` — `POST /sessions/start`, `POST /sessions/:id/end`, `GET /sessions/user/:userId`, `GET /sessions/:id` (with events).
+  - `controllers/session.controller.ts` — `POST /sessions/start`, `POST /sessions/:id/end`, `GET /sessions/user/:userId`, `GET /sessions/:id` (with events). All endpoints are Public in this refactor.
 - Services
   - `services/session.service.ts` — Start/end sessions, permission-checked listing and detail. `getWithEvents` fetches user events and filters by `sessionId` if present; includes events without `sessionId` for the session user.
 - DTOs

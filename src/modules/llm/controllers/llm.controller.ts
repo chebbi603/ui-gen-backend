@@ -1,14 +1,11 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Body, Controller, Post, Request } from '@nestjs/common';
+import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LlmService } from '../services/llm.service';
 import { ContractService } from '../../contract/services/contract.service';
 import { GenerateContractRequestDto } from '../dto/generate-contract.dto';
 import { ContractDto } from '../../contract/dto/contract.dto';
 
 @ApiTags('llm')
-@ApiBearerAuth('accessToken')
-@UseGuards(JwtAuthGuard)
 @Controller('llm')
 export class LlmController {
   constructor(
@@ -34,8 +31,8 @@ export class LlmController {
     const doc = await this.contractService.create(
       json,
       nextVersion,
-      { optimizedBy: req.user.userId },
-      req.user.userId,
+      { optimizedBy: req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000' },
+      req?.user?.userId ?? process.env.PUBLIC_EVENTS_USER_ID ?? '000000000000000000000000',
       userId,
     );
     const createdAt = (doc as any).createdAt as Date | undefined;

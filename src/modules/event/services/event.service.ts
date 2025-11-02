@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types as MongooseTypes } from 'mongoose';
 import { Event } from '../entities/event.entity';
@@ -38,9 +38,6 @@ export class EventService {
   }
 
   async listByUser(requesterId: string, requesterRole: string, userId: string) {
-    if (requesterId !== userId && requesterRole !== 'ADMIN') {
-      throw new ForbiddenException('Cannot list other user events');
-    }
     return this.eventModel
       .find({ userId: new MongooseTypes.ObjectId(userId) })
       .sort({ timestamp: -1 });

@@ -441,27 +441,37 @@ export class SeedService implements OnApplicationBootstrap {
       );
     }
 
-    const existingEvents = await this.eventModel.countDocuments({
-      userId: user._id,
-    });
-    if (existingEvents < 2) {
-      await this.eventModel.create([
-        {
-          userId: user._id as MongooseTypes.ObjectId,
-          timestamp: new Date(),
-          componentId: 'home',
-          eventType: 'view',
-          data: { page: 'home' },
-        },
-        {
-          userId: user._id as MongooseTypes.ObjectId,
-          timestamp: new Date(),
-          componentId: 'button1',
-          eventType: 'tap',
-          data: { page: 'home', value: 'cta' },
-        },
-      ]);
-      this.logger.log('Seeded sample events');
+    // Optional: seed a couple of sample analytics events only when explicitly enabled
+    const seedSampleEvents =
+      this.config.get<string>('SEED_SAMPLE_EVENTS') === 'true' ||
+      process.env.SEED_SAMPLE_EVENTS === 'true';
+    if (seedSampleEvents) {
+      const existingEvents = await this.eventModel.countDocuments({
+        userId: user._id,
+      });
+      if (existingEvents < 2) {
+        await this.eventModel.create([
+          {
+            userId: user._id as MongooseTypes.ObjectId,
+            timestamp: new Date(),
+            componentId: 'home',
+            eventType: 'view',
+            data: { page: 'home' },
+          },
+          {
+            userId: user._id as MongooseTypes.ObjectId,
+            timestamp: new Date(),
+            componentId: 'button1',
+            eventType: 'tap',
+            data: { page: 'home', value: 'cta' },
+          },
+        ]);
+        this.logger.log('Seeded sample events (enabled via SEED_SAMPLE_EVENTS)');
+      } else {
+        this.logger.log('Skipping sample events seeding (already present)');
+      }
+    } else {
+      this.logger.log('Sample events seeding disabled (SEED_SAMPLE_EVENTS!=true)');
     }
   }
 }
