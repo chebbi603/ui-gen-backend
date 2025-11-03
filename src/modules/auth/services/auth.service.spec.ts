@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { UserService } from '../../user/services/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { ContractService } from '../../contract/services/contract.service';
 import * as bcrypt from 'bcrypt';
 jest.mock('bcrypt');
 // Stub @nestjs/jwt to avoid loading jsonwebtoken/jwa in tests
@@ -20,6 +21,10 @@ describe('AuthService (unit)', () => {
     sign: jest.fn().mockReturnValue('signed-token'),
   } as any;
   const mockConfig: any = { get: jest.fn() };
+  const mockContract: any = {
+    findLatestCanonical: jest.fn(),
+    create: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -29,6 +34,7 @@ describe('AuthService (unit)', () => {
         { provide: UserService, useValue: mockUserService },
         { provide: JwtService, useValue: mockJwt },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: ContractService, useValue: mockContract },
       ],
     }).compile();
 
@@ -70,7 +76,7 @@ describe('AuthService (unit)', () => {
   });
 
   describe('login', () => {
-    it('returns accessToken and role with id', async () => {
+    it('returns accessToken and role with userId', async () => {
       // Arrange config and bcrypt mocks for refresh token flow
       mockConfig.get.mockImplementation((key: string) => {
         if (key === 'auth.jwt.refreshSecret') return 'test-refresh-secret';
@@ -86,7 +92,7 @@ describe('AuthService (unit)', () => {
       const user: any = { _id: 'u1', id: 'u1', email: 'a@b.c', role: 'ADMIN' };
       const res = await service.login(user);
       expect(res).toEqual({
-        _id: 'u1',
+        userId: 'u1',
         role: 'ADMIN',
         accessToken: 'signed-token',
         refreshToken: 'signed-token',
@@ -102,8 +108,25 @@ describe('AuthService (unit)', () => {
   describe('signUp', () => {
     it('delegates to userService.create', async () => {
       const dto: any = { email: 'a@b.c', password: 'p', username: 'u' };
+      mockContract.findLatestCanonical.mockResolvedValue(null);
+      mockUserService.findByEmail.mockResolvedValue({ _id: 'u1', email: 'a@b.c' });
       await service.signUp(dto);
       expect(mockUserService.create).toHaveBeenCalledWith(dto);
+    });
+
+    it('assigns default contract when canonical exists', async () => {
+      const dto: any = { email: 'new@b.c', password: 'p', username: 'u' };
+      mockUserService.findByEmail.mockResolvedValue({ _id: 'u1', email: 'new@b.c' });
+      mockContract.findLatestCanonical.mockResolvedValue({ json: { meta: {}, pagesUI: { pages: {} } }, version: '1.0.0', meta: { name: 'App' } });
+      await service.signUp(dto);
+      expect(mockUserService.create).toHaveBeenCalledWith(dto);
+      expect(mockContract.create).toHaveBeenCalledWith(
+        expect.any(Object),
+        '1.0.0',
+        expect.objectContaining({ source: 'auto-register' }),
+        'u1',
+        'u1',
+      );
     });
   });
 });

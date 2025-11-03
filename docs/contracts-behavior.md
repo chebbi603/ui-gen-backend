@@ -68,7 +68,7 @@ Caching Behavior
 Quick Verification (curl)
 - Login and fetch user id:
   - `ACCESS_TOKEN=$(curl -s -X POST http://localhost:8081/auth/login -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"password123"}' | jq -r '.accessToken')`
-  - `USER_ID=$(curl -s http://localhost:8081/users/me -H "Authorization: Bearer $ACCESS_TOKEN" | jq -r '._id')`
+  - `USER_ID=$(curl -s -X POST http://localhost:8081/auth/login -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"password123"}' | jq -r '.userId')`
 - Canonical:
   - `curl -s http://localhost:8081/contracts/canonical | jq -r '[.version, .json.meta.appName] | @tsv'`
 - Merged for user:
@@ -111,3 +111,8 @@ Contract Cleanup (2025-11-01)
   - `searchBar.action` → `onChanged`.
   - Ensured list/grid `itemTemplate` structures are compatible with the list builder pattern.
 - Result: disk-seeded contracts no longer contain unknown content; runtime filtering remains as a safety net.
+
+Logout Action Update (2025-11-03)
+- Canonical contract logout button now uses `authLogout` instead of a generic `apiCall`.
+- Rationale: generic `apiCall` did not include `refreshToken` and failed with 400; `authLogout` ensures the Flutter client clears tokens/state, reverts to canonical contract, and navigates to `/login` reliably.
+- Impact: eliminates the in-app "Logout failed" toast and aligns UX with secure session teardown.

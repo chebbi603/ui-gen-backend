@@ -12,6 +12,8 @@ describe('GeminiController (unit)', () => {
   const mockQueue: any = {
     addGeminiGenerationJob: jest.fn(),
     getGeminiJobStatus: jest.fn(),
+    addAnalyzeEventsJob: jest.fn(),
+    getAnalyzeJobStatus: jest.fn(),
   };
   const mockUser: any = {
     findOne: jest.fn(),
@@ -73,6 +75,56 @@ describe('GeminiController (unit)', () => {
       await expect(controller.enqueueGeneration({ userId: 'u1' } as any, {} as any)).rejects.toBeInstanceOf(
         ServiceUnavailableException,
       );
+    });
+  });
+
+  describe('enqueueAnalyzeEvents', () => {
+    it('returns job id when user exists and circuit closed', async () => {
+      mockUser.findOne.mockResolvedValue({ _id: 'u1' });
+      mockGemini.isCircuitOpen.mockReturnValue(false);
+      mockQueue.addAnalyzeEventsJob.mockResolvedValue('jobA1');
+
+      const res = await controller.enqueueAnalyzeEvents({ userId: 'u1', priority: 3 } as any);
+      expect(res).toEqual({ jobId: 'jobA1', message: 'Accepted' });
+      expect(mockQueue.addAnalyzeEventsJob).toHaveBeenCalledWith({ userId: 'u1', priority: 3, since: undefined, limit: undefined });
+    });
+
+    it('throws 404 when user does not exist', async () => {
+      mockUser.findOne.mockResolvedValue(null);
+      await expect(controller.enqueueAnalyzeEvents({ userId: 'missing' } as any)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('throws 503 when circuit is open', async () => {
+      mockUser.findOne.mockResolvedValue({ _id: 'u1' });
+      mockGemini.isCircuitOpen.mockReturnValue(true);
+      await expect(controller.enqueueAnalyzeEvents({ userId: 'u1' } as any)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('maps queue init error to 503', async () => {
+      mockUser.findOne.mockResolvedValue({ _id: 'u1' });
+      mockGemini.isCircuitOpen.mockReturnValue(false);
+      mockQueue.addAnalyzeEventsJob.mockRejectedValue(new Error('Queue not initialized'));
+      await expect(controller.enqueueAnalyzeEvents({ userId: 'u1' } as any)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+  });
+
+  describe('getAnalyzeJobStatus', () => {
+    it('returns status when found', async () => {
+      mockQueue.getAnalyzeJobStatus.mockResolvedValue({ id: 'idA', status: 'completed', progress: 100, timestamps: {} });
+      const res = await controller.getAnalyzeJobStatus('idA');
+      expect(res.id).toBe('idA');
+      expect(res.status).toBe('completed');
+    });
+
+    it('throws 404 when not found', async () => {
+      mockQueue.getAnalyzeJobStatus.mockResolvedValue(null);
+      await expect(controller.getAnalyzeJobStatus('idX')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

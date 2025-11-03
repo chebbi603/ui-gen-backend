@@ -2,8 +2,14 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue, Worker, JobsOptions, QueueEvents, Job } from 'bullmq';
 import IORedis, { Redis } from 'ioredis';
-import { GEMINI_GENERATION_QUEUE, GeminiGenerationJobData } from './queue.constants';
+import {
+  GEMINI_GENERATION_QUEUE,
+  GeminiGenerationJobData,
+  ANALYZE_EVENTS_QUEUE,
+  AnalyzeEventsJobData,
+} from './queue.constants';
 import { GeminiGenerationProcessor } from './processors/gemini-generation.processor';
+import { AnalyzeEventsProcessor } from './processors/analyze-events.processor';
 
 type RedisConnectionOptions = {
   host?: string;
@@ -20,9 +26,14 @@ export class QueueService implements OnModuleInit {
   private worker?: Worker<GeminiGenerationJobData, any>;
   private events?: QueueEvents;
 
+  private queueAnalyze?: Queue<AnalyzeEventsJobData, any>;
+  private workerAnalyze?: Worker<AnalyzeEventsJobData, any>;
+  private eventsAnalyze?: QueueEvents;
+
   constructor(
     private readonly config: ConfigService,
     private readonly processor: GeminiGenerationProcessor,
+    private readonly analyzeProcessor: AnalyzeEventsProcessor,
   ) {}
 
   async onModuleInit() {
@@ -80,15 +91,32 @@ export class QueueService implements OnModuleInit {
         connection: this.connection,
       });
 
+      // Analyze-events queue
+      this.queueAnalyze = new Queue<AnalyzeEventsJobData>(ANALYZE_EVENTS_QUEUE, {
+        connection: this.connection,
+        defaultJobOptions,
+      });
+      this.workerAnalyze = new Worker<AnalyzeEventsJobData>(
+        ANALYZE_EVENTS_QUEUE,
+        async (job) => this.analyzeProcessor.process(job),
+        { connection: this.connection },
+      );
+      this.eventsAnalyze = new QueueEvents(ANALYZE_EVENTS_QUEUE, {
+        connection: this.connection,
+      });
+
       this.bindEventListeners();
       this.logger.log(`BullMQ queue '${GEMINI_GENERATION_QUEUE}' initialized.`);
+      this.logger.log(`BullMQ queue '${ANALYZE_EVENTS_QUEUE}' initialized.`);
 
       // Cleanup old jobs
       const completedMs = this.config.get<number>('queue.cleanup.completedMs') ?? 604800000;
       const failedMs = this.config.get<number>('queue.cleanup.failedMs') ?? 604800000;
       await this.queue.clean(completedMs, 1000, 'completed');
       await this.queue.clean(failedMs, 1000, 'failed');
-      this.logger.log('BullMQ queue cleanup executed for completed/failed jobs.');
+      await this.queueAnalyze.clean(completedMs, 1000, 'completed');
+      await this.queueAnalyze.clean(failedMs, 1000, 'failed');
+      this.logger.log('BullMQ queue cleanup executed for completed/failed jobs on both queues.');
 
       // Optional: add a test job on startup
       const addTest = this.config.get<boolean>('queue.addTestJob') ?? false;
@@ -115,6 +143,23 @@ export class QueueService implements OnModuleInit {
     };
     const job = await this.queue.add('generate', data, jobOptions);
     this.logger.log(`Enqueued gemini-generation job id=${job.id} for userId=${data.userId}`);
+    return String(job.id);
+  }
+
+  async addAnalyzeEventsJob(
+    data: AnalyzeEventsJobData,
+    options?: JobsOptions,
+  ): Promise<string> {
+    if (!this.queueAnalyze) {
+      this.logger.warn('Queue not initialized; cannot add analyze-events job.');
+      throw new Error('Queue not initialized');
+    }
+    const jobOptions: JobsOptions = {
+      ...(options || {}),
+      priority: options?.priority ?? data.priority,
+    };
+    const job = await this.queueAnalyze.add('analyze', data, jobOptions);
+    this.logger.log(`Enqueued analyze-events job id=${job.id} for userId=${data.userId}`);
     return String(job.id);
   }
 
@@ -154,8 +199,44 @@ export class QueueService implements OnModuleInit {
     };
   }
 
+  async getAnalyzeJobStatus(jobId: string): Promise<{
+    id: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'unknown';
+    progress: number;
+    result?: any;
+    error?: string | null;
+    timestamps: { createdAt?: string; startedAt?: string; completedAt?: string };
+  } | null> {
+    if (!this.queueAnalyze) return null;
+    const job: Job | null = await this.queueAnalyze.getJob(jobId);
+    if (!job) return null;
+    const state = await job.getState();
+    const statusMap: Record<string, 'pending' | 'processing' | 'completed' | 'failed' | 'unknown'> = {
+      waiting: 'pending',
+      delayed: 'pending',
+      paused: 'pending',
+      active: 'processing',
+      completed: 'completed',
+      failed: 'failed',
+      stalled: 'processing',
+    };
+    const status = statusMap[state] || 'unknown';
+    const createdAt = job.timestamp ? new Date(job.timestamp).toISOString() : undefined;
+    const startedAt = (job as any).processedOn ? new Date((job as any).processedOn).toISOString() : undefined;
+    const completedAt = (job as any).finishedOn ? new Date((job as any).finishedOn).toISOString() : undefined;
+    const error = job.failedReason || null;
+    return {
+      id: String(job.id),
+      status,
+      progress: (job.progress as number) || 0,
+      result: job.returnvalue,
+      error,
+      timestamps: { createdAt, startedAt, completedAt },
+    };
+  }
+
   private bindEventListeners() {
-    if (!this.worker || !this.events) return;
+    if (!this.worker || !this.events || !this.workerAnalyze || !this.eventsAnalyze) return;
 
     this.worker.on('active', (job) => {
       this.logger.log(`Job ${job.id} is active (name=${job.name}).`);
@@ -178,6 +259,30 @@ export class QueueService implements OnModuleInit {
     });
     this.events.on('added', ({ jobId }) => {
       this.logger.log(`Job ${jobId} was added to the queue.`);
+    });
+
+    // Analyze-events listeners
+    this.workerAnalyze.on('active', (job) => {
+      this.logger.log(`Analyze job ${job.id} is active (name=${job.name}).`);
+    });
+    this.workerAnalyze.on('completed', (job, result) => {
+      this.logger.log(`Analyze job ${job.id} completed.`);
+    });
+    this.workerAnalyze.on('failed', (job, err) => {
+      this.logger.error(`Analyze job ${job?.id} failed: ${err?.message || err}`);
+    });
+    this.workerAnalyze.on('stalled', (jobId) => {
+      this.logger.warn(`Analyze job ${jobId} stalled.`);
+    });
+    this.workerAnalyze.on('error', (err) => {
+      this.logger.error(`Analyze worker error: ${err?.message || err}`);
+    });
+
+    this.eventsAnalyze.on('waiting', ({ jobId }) => {
+      this.logger.log(`Analyze job ${jobId} is waiting.`);
+    });
+    this.eventsAnalyze.on('added', ({ jobId }) => {
+      this.logger.log(`Analyze job ${jobId} was added to the queue.`);
     });
   }
 }

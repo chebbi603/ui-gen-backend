@@ -1,6 +1,63 @@
 Project: nestjs-mongo (NestJS)
 # Jest Test Results
 
+## Latest Run Summary — 2025-11-03 (Unit — 73 tests passed)
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.8 s
+- Notes:
+  - Queue/Gemini specs log expected validation and network fixtures; circuit breaker behavior verified.
+  - Benign warnings: `--localstorage-file` provided without a valid path in queue specs; no impact on assertions.
+
+## Latest Run Summary — 2025-11-03 (Register assigns default contract)
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~5.3 s
+- Notes:
+  - `AuthService.signUp` now auto-creates a personalized contract for the newly registered user using the latest canonical contract (when present).
+  - Unit tests updated to mock `ContractService` and verify assignment behavior; all suites green.
+  - Behavior when no canonical exists: registration still succeeds; contract assignment is skipped.
+
+## Latest Run Summary — 2025-11-03 (Auth login schema: userId, tokens required)
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: ~6.4 s
+- Notes:
+  - Canonical contract updated: `AuthService.login.responseSchema` includes `userId` and marks `accessToken`/`refreshToken` as required; `_id` remains optional for compatibility.
+  - No code changes required; existing unit tests pass without regression.
+  - Benign warnings observed in queue/Gemini specs remain expected for fixture-driven validations.
+
+## Latest Run Summary — 2025-11-03 (userId-only policy + logout alignment)
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: ~8 s
+- Notes:
+  - Auth login now returns `{ userId, role, accessToken, refreshToken }` (removed `username`, `name`).
+  - Events ingestion and analysis endpoints attribute strictly by `userId`; `_id`/`id` aliases removed from docs.
+  - Gemini generation processor logs expected validation/network errors in fixtures; circuit breaker cool-down observed.
+  - React frontend updated to send `{ userId }` in `POST /gemini/analyze-events`.
+  - Flutter logout now redirects to `/login`, clears persisted state, and falls back to canonical contract.
+
+## Latest Run Summary — 2025-11-03 (Logout button uses authLogout)
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: ~6.8 s
+- Notes:
+  - Canonical contract updated: Logout button action switched from `apiCall` to `authLogout`.
+  - Prevents backend 400 due to missing `refreshToken` when using generic `apiCall`.
+  - Flutter client now clears tokens/state and navigates to `/login` without error toast.
+  - Benign warnings: `--localstorage-file` during queue specs; GeminiService circuit breaker log remains expected.
+
 ## Latest Run Summary — Unit
 - Date: 2025-11-02
 - Command: `npm test --silent`
@@ -217,6 +274,20 @@ Project: nestjs-mongo (NestJS)
   - Result: 4 passed, 0 failed, 2 suites
   - Notes: Worker forced-exit warning observed; no failing tests.
   - Scope: Canonical endpoints remain public. Events (ingest and reads), LLM generate, Gemini queue endpoints, and Sessions are now Public. JWT is only required for auth-specific flows.
+
+## Latest Run Summary — Unit (Analyze Events Job Endpoints)
+- Date: 2025-11-02
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: ~6.6 s
+- Notes:
+  - Fixed NestJS DI issues by providing an `AnalyzeEventsProcessor` mock in `QueueService` unit tests.
+  - Resolved TypeScript union-type mismatches for `severity` and `priority` in `GeminiService.analyzeEventsForUser` and in fallback improvements.
+  - Ensured `severity`/`priority` are required and normalized to `'low' | 'medium' | 'high'`.
+  - Added/updated unit tests covering job endpoints: enqueue (`POST /gemini/analyze-events/job`) and status (`GET /gemini/analyze-events/jobs/:jobId`).
+  - All suites pass; benign `--localstorage-file` warning persists during queue specs.
 
 ## Redis Cache Verification (2025-11-01)
 
@@ -480,3 +551,34 @@ Time:        ~6.5 s
   - Added debug logs to `EventController` (`POST /events`, `POST /events/tracking-event`) to print alias sources and the resolved `userId` used for attribution.
   - Added batch-level summary logs in `EventService.createBatch` reporting inserted count, batch `userId`, per‑event alias override count, and fallback usage.
   - No functional changes to ingestion; all suites remain green.
+
+## Latest Run Summary — 2025-11-03 (userId-only policy, docs refreshed)
+- Command: `npm test`
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: ~8.6 s
+- Notes:
+  - Auth login now returns `{ userId, role, accessToken, refreshToken }` (removed `username`, `name`).
+  - Events ingestion uses `userId` exclusively for attribution; aliases `_id`/`id` removed from DTOs, controllers, and docs.
+  - Analyze-events endpoints require `userId` only; examples and request DTO updated.
+  - Updated docs (`nest-api.md`, `nest-modules.md`, `contracts-behavior.md`) to reflect userId-only inputs and new login response.
+  - All unit tests pass across Auth, Event, Queue, LLM, and User modules.
+## Run 2025-11-03
+
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: 7.429 s
+- Notes: transient processor warnings observed; no test failures.
+## Latest Run Summary (Analytics/Events DTO alignment)
+- Date: 2025-11-03
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 72 passed, 72 total
+- Snapshots: 0 total
+- Time: ~7.5 s
+- Notes:
+  - All suites green with enforced `EventDto` that excludes `id`; backend accepts `userId` only for attribution.
+  - Queue/Gemini specs print expected fixture warnings (circuit breaker cooldowns and validation messages) but remain passing.
+  - Confirms backend stability for Flutter change removing `id` from analytics payload and including `userId`.

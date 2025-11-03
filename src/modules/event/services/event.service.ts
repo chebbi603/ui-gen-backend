@@ -26,7 +26,7 @@ export class EventService {
     let overrideCount = 0;
     let fallbackCount = 0;
     const docs = events.map((e, idx) => {
-      const perAlias = (e as any)?.userId ?? (e as any)?._id ?? (e as any)?.id;
+      const perAlias = (e as any)?.userId;
       const isValidPerAlias = MongooseTypes.ObjectId.isValid(String(perAlias || ''));
       const effectiveUid = isValidPerAlias ? String(perAlias) : userId;
       if (isValidPerAlias && String(perAlias) !== String(userId)) {

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { UserModule } from '../user/user.module';
+import { ContractModule } from '../contract/contract.module';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './services/auth.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -11,6 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
   imports: [
     UserModule,
+    ContractModule,
     PassportModule,
     ConfigModule,
     JwtModule.registerAsync({

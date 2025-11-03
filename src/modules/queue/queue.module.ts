@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { QueueService } from './queue.service';
 import { LlmModule } from '../llm/llm.module';
 import { GeminiGenerationProcessor } from './processors/gemini-generation.processor';
+import { AnalyzeEventsProcessor } from './processors/analyze-events.processor';
 import { ContractModule } from '../contract/contract.module';
 import { UserContractModule } from '../user-contract/user-contract.module';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -22,7 +23,7 @@ import { EventModule } from '../event/event.module';
     MongooseModule.forFeature([{ name: LlmJob.name, schema: LlmJobSchema }]),
   ],
   controllers: [GeminiController],
-  providers: [QueueService, GeminiGenerationProcessor],
+  providers: [QueueService, GeminiGenerationProcessor, AnalyzeEventsProcessor],
   exports: [QueueService],
 })
 export class QueueModule {}

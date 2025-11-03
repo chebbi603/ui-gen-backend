@@ -29,7 +29,7 @@ Swagger: `http://localhost:8081/api`
 - Purpose: Authentication and user registration.
 - Controllers:
   - `AuthController`
-    - `POST /auth/login` — guarded by `LocalAuthGuard`; returns `{ _id, role, accessToken }`.
+    - `POST /auth/login` — guarded by `LocalAuthGuard`; returns `{ userId, role, accessToken, refreshToken }`.
     - `POST /auth/register` — registers a new user; returns `{ ok: true }`.
     - `POST /auth/signup` — legacy alias; returns `{ ok: true }`.
 - Services:

@@ -1,16 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class AnalyzeEventsRequestDto {
-  @ApiProperty({ description: 'Target user `_id` (Mongo ObjectId)', required: false, example: '64fa0c...' })
+  @ApiProperty({ description: 'Target user id (Mongo ObjectId)', required: true, example: '64fa0c...' })
   @IsString()
-  @IsOptional()
-  _id?: string;
-
-  @ApiProperty({ description: 'Target user `id` (alias of `_id`)', required: false, example: '64fa0c...' })
-  @IsString()
-  @IsOptional()
-  id?: string;
+  userId!: string;
 }
 
 export class PainPointDto {

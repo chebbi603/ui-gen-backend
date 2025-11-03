@@ -32,18 +32,15 @@ export class EventController {
     type: InsertedCountDto,
   })
   async createEvents(@Body() body: CreateEventsBatchDto, @Request() req: any) {
-    const aliasTop =
-      (body as any)?.userId ?? (body as any)?._id ?? (body as any)?.id;
+    const aliasTop = (body as any)?.userId;
     const aliasEvent =
       Array.isArray(body?.events) && body.events.length > 0
-        ? (body.events[0] as any)?.userId ??
-          (body.events[0] as any)?._id ??
-          (body.events[0] as any)?.id
+        ? (body.events[0] as any)?.userId
         : undefined;
     const candidate =
       aliasTop ??
       aliasEvent ??
-      req?.user?.id ??
+      req?.user?.userId ??
       process.env.PUBLIC_EVENTS_USER_ID ??
       '000000000000000000000000';
     const uid = MongooseTypes.ObjectId.isValid(candidate)
@@ -60,8 +57,7 @@ export class EventController {
     type: InsertedCountDto,
   })
   async createSingleEvent(@Body() body: EventDto, @Request() req: any) {
-    const aliasUid =
-      (body as any)?.userId ?? (body as any)?._id ?? (body as any)?.id;
+    const aliasUid = (body as any)?.userId;
     const candidate =
       aliasUid ??
       req?.user?.userId ??

@@ -14,13 +14,7 @@ export class EventDto {
   @IsOptional()
   userId?: string;
 
-  @IsString()
-  @IsOptional()
-  _id?: string;
-
-  @IsString()
-  @IsOptional()
-  id?: string;
+  // `_id` and `id` aliases removed; use `userId` only
 
   @IsDateString()
   timestamp: string;
@@ -49,13 +43,7 @@ export class CreateEventsBatchDto {
   @IsOptional()
   userId?: string;
 
-  @IsString()
-  @IsOptional()
-  _id?: string;
-
-  @IsString()
-  @IsOptional()
-  id?: string;
+  // `_id` and `id` aliases removed; use `userId` only
 
   @IsArray()
   @ValidateNested({ each: true })

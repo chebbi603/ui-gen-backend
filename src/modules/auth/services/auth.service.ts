@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { UserService } from '../../user/services/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from '../../user/dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import { ContractService } from '../../contract/services/contract.service';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +12,7 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private contractService: ContractService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -45,9 +47,7 @@ export class AuthService {
     await this.userService.addRefreshToken(user._id.toString(), refreshTokenHash);
 
     return {
-      _id: user.id,
-      username: user.username,
-      name: user.name,
+      userId: (user && user._id && user._id.toString) ? user._id.toString() : String(user.id ?? ''),
       role: payload.role,
       accessToken,
       refreshToken,
@@ -55,7 +55,35 @@ export class AuthService {
   }
 
   async signUp(user: CreateUserDto) {
+    // Create the user account
     await this.userService.create(user);
+
+    // Fetch the newly created user to obtain _id
+    const created = await this.userService.findByEmail(user.email);
+    if (!created) {
+      throw new InternalServerErrorException('User creation succeeded but lookup failed');
+    }
+
+    // Find latest canonical contract
+    const canonical = await this.contractService.findLatestCanonical();
+    if (!canonical) {
+      // No canonical to base on; skip auto-assignment silently
+      return;
+    }
+
+    // Create a personalized contract for the new user based on canonical
+    try {
+      await this.contractService.create(
+        (canonical as any).json,
+        (canonical as any).version,
+        { ...(canonical as any).meta, source: 'auto-register', assignedAt: new Date().toISOString() },
+        (created as any)._id?.toString?.() ?? '',
+        (created as any)._id?.toString?.() ?? '',
+      );
+    } catch (_err) {
+      // If contract creation fails, don't block registration; log can be added here if using a logger
+      return;
+    }
   }
 
   async refreshTokens(refreshToken: string) {

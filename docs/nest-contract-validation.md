@@ -117,3 +117,9 @@ Returns errors:
 - Service: `src/modules/contract/services/contract-validation.service.ts`
 - Types: `src/common/validation/validation-result.ts`
 - Legacy wrapper: `src/common/validators/contract.validator.ts`
+## State Field Type Rules
+
+- The `state.global` and `state.pages` entries must explicitly declare `type`.
+- Default behavior: missing `type` is treated as `string` by clients; this can corrupt object fields.
+- Use `type: "object"` for map-like fields (e.g., `user` modeled on `User`).
+- Canonical contract updated: `state.global.user` includes `type: "object"` to align with client casting and validation.

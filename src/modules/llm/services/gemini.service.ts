@@ -368,4 +368,144 @@ export class GeminiService {
       pagesUI: { pages: filtered },
     };
   }
+  
+  async analyzeEventsForUser(
+    userId: string,
+    opts?: { since?: Date; limit?: number },
+  ): Promise<{
+    painPoints: Array<{ title: string; description: string; elementId?: string; page?: string; severity: 'low' | 'medium' | 'high' }>;
+    improvements: Array<{ title: string; description: string; elementId?: string; page?: string; priority: 'low' | 'medium' | 'high' }>;
+    eventCount: number;
+    timestamp: string;
+    message?: string;
+  }> {
+    const since = opts?.since || new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const limit = opts?.limit || 100;
+    let events = await this.eventService.getRecentEvents(userId, since, limit);
+    let eventCount = events.length;
+    const timestamp = new Date().toISOString();
+    if (eventCount === 0) {
+      events = await this.eventService.getRecentEvents(userId, new Date(0), limit);
+      eventCount = events.length;
+      if (eventCount === 0) {
+        return {
+          painPoints: [],
+          improvements: [],
+          eventCount,
+          timestamp,
+          message: 'No events found for this user.',
+        };
+      }
+    }
+
+    const constraints = [
+      'Return only JSON with painPoints and improvements arrays, each max length 5',
+      'Ground insights in provided events; avoid hallucination',
+    ];
+
+    const userPrompt = JSON.stringify({
+      task:
+        'Analyze mobile app tracking events and identify top UX pain points AND top UX improvements (nice-to-haves).',
+      format: 'JSON only',
+      schema: {
+        painPoints: [
+          {
+            title: 'string',
+            description: 'string',
+            elementId: 'string?',
+            page: 'string?',
+            severity: 'low|medium|high',
+          },
+        ],
+        improvements: [
+          {
+            title: 'string',
+            description: 'string',
+            elementId: 'string?',
+            page: 'string?',
+            priority: 'low|medium|high',
+          },
+        ],
+      },
+      constraints,
+      context: { userId, eventCount },
+      events,
+    });
+    const model = this.config.get<string>('llm.gemini.model') || 'gemini-2.5-flash';
+    const systemPrompt = buildSystemPrompt(model);
+    try {
+      const text = await this.callGemini(userPrompt, systemPrompt);
+      const json = parseJsonStrict(text);
+      if (!json || !Array.isArray(json.painPoints) || !Array.isArray(json.improvements)) {
+        throw new Error('LLM output invalid: expected painPoints and improvements arrays');
+      }
+      const asSev = (s: any): 'low' | 'medium' | 'high' =>
+        s === 'low' || s === 'medium' || s === 'high' ? s : 'medium';
+      const asPrio = (s: any): 'low' | 'medium' | 'high' =>
+        s === 'low' || s === 'medium' || s === 'high' ? s : 'medium';
+      const painPoints = (json.painPoints as any[]).slice(0, 5).map((pp) => ({
+        title: String(pp.title || ''),
+        description: String(pp.description || ''),
+        elementId: pp.elementId ? String(pp.elementId) : undefined,
+        page: pp.page ? String(pp.page) : undefined,
+        severity: asSev(pp.severity),
+      }));
+      const improvements = (json.improvements as any[]).slice(0, 5).map((im) => ({
+        title: String(im.title || ''),
+        description: String(im.description || ''),
+        elementId: im.elementId ? String(im.elementId) : undefined,
+        page: im.page ? String(im.page) : undefined,
+        priority: asPrio(im.priority),
+      }));
+      return {
+        painPoints,
+        improvements,
+        eventCount,
+        timestamp,
+      };
+    } catch (err) {
+      const improvementsFallback: Array<{
+        title: string;
+        description: string;
+        elementId?: string;
+        page?: string;
+        priority: 'low' | 'medium' | 'high';
+      }> = [
+        {
+          title: 'Instrument key user journeys',
+          description:
+            'Add tracking for onboarding, checkout, and error flows to enable meaningful analysis.',
+          priority: 'high',
+        },
+        {
+          title: 'Improve error feedback',
+          description:
+            'Ensure clear error messages and retry guidance for forms and network failures.',
+          priority: 'medium',
+        },
+        {
+          title: 'Clarify navigation and CTAs',
+          description:
+            'Use consistent labels and visual hierarchy for primary actions; avoid ambiguous buttons.',
+          priority: 'medium',
+        },
+        {
+          title: 'Add loading and empty states',
+          description:
+            'Provide skeletons/spinners and helpful empty-state copy to reduce confusion.',
+          priority: 'low',
+        },
+      ];
+      return {
+        painPoints: [],
+        improvements: improvementsFallback,
+        eventCount,
+        timestamp,
+        message:
+          eventCount === 0
+            ? 'No events found; returned general improvements.'
+            : 'Provider unavailable; returned heuristic improvements.',
+      };
+    }
+  }
 }

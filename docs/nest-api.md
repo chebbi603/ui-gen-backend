@@ -22,7 +22,7 @@ Swagger: `http://localhost:8081/api`
     - Header: `Cache-Control: private, max-age=300`
     - Example:
       - `ACCESS_TOKEN=$(curl -s -X POST http://localhost:8081/auth/login -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"password123"}' | jq -r '.accessToken')`
-      - `USER_ID=$(curl -s http://localhost:8081/users/me -H "Authorization: Bearer $ACCESS_TOKEN" | jq -r '._id')`
+      - `USER_ID=$(curl -s -X POST http://localhost:8081/auth/login -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"password123"}' | jq -r '.userId')`
       - `curl -s http://localhost:8081/users/$USER_ID/contract -H "Authorization: Bearer $ACCESS_TOKEN" | jq -r '[ (.json.pagesUI.pages.music.children[] | select(.type=="grid") | .columns), (.json.pagesUI.bottomNavigation.items[0].label) ] | @tsv'`
 
 - Personalized snapshots (authenticated)
@@ -91,12 +91,13 @@ Notes
   - Registers a new user.
   - Body: `{ "email": "user@example.com", "username": "user", "name": "User", "password": "secret123" }`
   - Response: `{ "ok": true }`
+  - Behavior: on success, the backend automatically assigns the latest canonical contract to the new user by creating a personalized snapshot seeded from the canonical. If no canonical exists, registration succeeds without creating a personalized contract.
 
 - `POST /auth/login`
   - Logs in and returns JWT.
   - Body: `{ "email": "user@example.com", "password": "secret123" }`
-  - Response: `{ "_id": "...", "role": "USER", "username": "user", "name": "User Name", "accessToken": "...", "refreshToken": "..." }`
-  - Notes: `username` and `name` are included to allow clients to display user-facing identifiers immediately after login without an extra `/users/me` call.
+  - Response: `{ "userId": "...", "role": "USER", "accessToken": "...", "refreshToken": "..." }`
+  - Notes: For profile details (e.g., `name`, `username`), call `/users/me` with the JWT.
 
 Notes:
 - Uses `LocalAuthGuard` for credential validation.
@@ -116,9 +117,9 @@ Notes:
       -d '{ "events": [ { "timestamp": "2025-11-02T12:00:00.000Z", "page": "home", "componentId": "btn_start", "eventType": "tap", "data": {} } ] }'
     ```
   - Behavior: if unauthenticated, events are stored under a fallback user id (`PUBLIC_EVENTS_USER_ID`, default `000000000000000000000000`).
-  - Aliasing: you can explicitly attribute events to a user by including one of `userId`, `_id`, or `id` in the request body.
-    - For batch: supply the field at the top level of `CreateEventsBatchDto`.
-    - For single: supply the field inside the `EventDto`.
+  - Attribution: explicitly attribute events to a user by including `userId` in the request body.
+    - For batch: supply `userId` at the top level of `CreateEventsBatchDto`.
+    - For single: supply `userId` inside the `EventDto`.
     - This overrides the fallback and ensures `/users/:id/tracking-events` returns the same user’s events.
   - Example (explicit user mapping):
     ```bash
@@ -219,7 +220,7 @@ Notes:
 
 - `POST /events` (JWT)
   - Inserts a batch of events attributed to the current JWT user.
-  - Aliasing: you may include `_id` or `id` at the top level to attribute to a specific user. In batch payloads, if an individual event includes `_id` or `id`, that per-event alias is used for that event; otherwise it falls back to the batch-level alias or JWT user. When omitted, attribution uses the JWT user.
+  - Attribution: include `userId` at the top level to attribute to a specific user. In batch payloads, if an individual event includes `userId`, that per-event attribution is used for that event; otherwise it falls back to the batch-level `userId` or JWT user. When omitted, attribution uses the JWT user.
   - **Request Payload** (`CreateEventsBatchDto`):
     ```json
     {
@@ -244,7 +245,7 @@ Notes:
 
 - `POST /events/tracking-event` (JWT)
   - Inserts a single tracking event for the current JWT user.
-  - Aliasing: optionally include `_id` or `id` inside the event payload to attribute to a specific user. When omitted, attribution uses the JWT user.
+  - Attribution: optionally include `userId` inside the event payload to attribute to a specific user. When omitted, attribution uses the JWT user.
   - **Request Payload** (`EventDto`):
     ```json
     {
@@ -364,7 +365,7 @@ Notes:
   - **Auth**: No JWT required in MVP.
   - **Request Payload** (`AnalyzeEventsRequestDto`):
     ```json
-    { "id": "64f5b7e86831d4f215d7b8d4" }
+    { "userId": "64f5b7e86831d4f215d7b8d4" }
     ```
   - **Response** (`AnalyzeEventsResponseDto`):
     ```json
@@ -395,14 +396,49 @@ Notes:
     ```bash
     curl -s -X POST http://localhost:8081/gemini/analyze-events \
       -H 'Content-Type: application/json' \
-      -d '{ "id": "64f5b7e86831d4f215d7b8d4" }'
+      -d '{ "userId": "64f5b7e86831d4f215d7b8d4" }'
     ```
   - **Notes**:
     - Pain points are returned as `{ title, description, elementId?, page?, severity }`.
     - Improvements are returned as `{ title, description, elementId?, page?, priority }`.
     - Invalid LLM output (missing `painPoints` or `improvements` arrays) yields `400 Bad Request`.
     - Model selection uses `llm.gemini.model` from configuration (`GEMINI_MODEL`), defaulting to `gemini-2.5-flash`.
-    - Only `id` or `_id` are accepted in requests; using `userId` will return `400`.
+    - Only `userId` is accepted in requests.
+
+ - `POST /gemini/analyze-events/job` (Public)
+  - **Process**: Enqueues an analyze-events job for the target user and returns `202 Accepted` with the job ID. The worker fetches events, calls Gemini (or returns a heuristic fallback), and returns a JSON result via job status.
+  - **Request Payload** (`EnqueueAnalyzeEventsJobDto`):
+    ```json
+    { "userId": "64f5b7e86831d4f215d7b8d4", "priority": 5, "since": "2025-01-01T00:00:00.000Z", "limit": 100 }
+    ```
+  - **Response** (`EnqueueJobResponseDto`):
+    ```json
+    { "jobId": "an-01b4c2d0-7b1e-4e37-b7c0-29b1b060c3bb", "message": "Accepted" }
+    ```
+  - Circuit breaker: if Gemini circuit is open, responds with `503 Service Unavailable`.
+
+ - `GET /gemini/analyze-events/jobs/:jobId` (Public)
+  - **Process**: Reads job state for analyze-events and returns status, progress, timestamps, and the analysis result or error.
+  - **Response** (`GeminiJobStatusDto`):
+    ```json
+    {
+      "id": "an-01b4c2d0-7b1e-4e37-b7c0-29b1b060c3bb",
+      "status": "completed",
+      "progress": 100,
+      "result": {
+        "painPoints": [ { "title": "Users rapidly tap Submit", "description": "Repeated taps within 1s indicate confusion around the CTA.", "elementId": "submit-btn", "page": "checkout", "severity": "high" } ],
+        "improvements": [ { "title": "Replace Submit with clearer Continue CTA", "description": "Use a stepper and clarify copy to reduce rapid taps.", "elementId": "submit-btn", "page": "checkout", "priority": "high" } ],
+        "eventCount": 47,
+        "timestamp": "2025-11-02T12:34:56.000Z"
+      },
+      "error": null,
+      "timestamps": {
+        "createdAt": "2023-10-03T10:00:00.000Z",
+        "startedAt": "2023-10-03T10:00:02.000Z",
+        "completedAt": "2023-10-03T10:00:08.000Z"
+      }
+    }
+    ```
 
 ---
 
@@ -460,10 +496,10 @@ Notes:
 
 - Posts module/endpoints have been removed; the backend focuses on auth, users, canonical contracts, and event collection.
 - See Swagger at `/api` for complete schemas.
-  - Debug logging (server): endpoints print the alias sources and final resolved `userId`.
+  - Debug logging (server): endpoints log `body.userId`, `req.user.userId`, and the final resolved `userId` used for attribution.
     - Batch example log:
-      `POST /events batch: events=2, aliasTop=507f1f77bcf86cd799439011, aliasFirstEvent=null, jwtUser=null, candidate=507f1f77bcf86cd799439011, resolvedUid=507f1f77bcf86cd799439011`
+      `POST /events batch: events=2, bodyUserId=507f1f77bcf86cd799439011, jwtUserId=null, resolvedUid=507f1f77bcf86cd799439011`
     - Single example log:
-      `POST /events/tracking-event: eventType=tap, componentId=btn1, alias=null, jwtUser=null, candidate=000000000000000000000000, resolvedUid=000000000000000000000000`
+      `POST /events/tracking-event: eventType=tap, componentId=btn1, bodyUserId=null, jwtUserId=null, resolvedUid=000000000000000000000000`
     - Service summary:
-      `EventService.createBatch: inserted=2, batchUid=507f1f77bcf86cd799439011, overrides=1, usedBatchOrInvalid=1`
+      `EventService.createBatch: inserted=2, batchUid=507f1f77bcf86cd799439011`

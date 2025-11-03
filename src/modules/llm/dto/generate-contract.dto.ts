@@ -1,21 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class GenerateContractRequestDto {
-  @ApiProperty({ description: 'Target user id', required: false })
+  @ApiProperty({ description: 'Target user id', required: true })
   @IsString()
-  @IsOptional()
-  userId?: string;
-
-  @ApiProperty({ description: 'Alias for user id', required: false })
-  @IsString()
-  @IsOptional()
-  _id?: string;
-
-  @ApiProperty({ description: 'Alias for user id', required: false })
-  @IsString()
-  @IsOptional()
-  id?: string;
+  userId!: string;
 
   @ApiProperty({
     type: 'object',

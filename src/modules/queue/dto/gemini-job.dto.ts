@@ -2,20 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsInt, Min } from 'class-validator';
 
 export class EnqueueGeminiJobDto {
-  @ApiProperty({ description: 'Target user id', example: '64fa0c...' })
+  @ApiProperty({ description: 'Target user id', example: '64fa0c...', required: true })
   @IsString()
-  @IsOptional()
-  userId?: string;
-
-  @ApiProperty({ description: 'Alias for user id', required: false, example: '64fa0c...' })
-  @IsString()
-  @IsOptional()
-  _id?: string;
-
-  @ApiProperty({ description: 'Alias for user id', required: false, example: '64fa0c...' })
-  @IsString()
-  @IsOptional()
-  id?: string;
+  userId!: string;
 
   @ApiProperty({ description: 'Optional priority (1 highest)', required: false, example: 1 })
   @IsOptional()

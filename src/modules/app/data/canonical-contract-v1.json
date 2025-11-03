@@ -140,11 +140,13 @@
             "properties": {
               "accessToken": { "type": "string" },
               "refreshToken": { "type": "string" },
+              "userId": { "type": "string" },
               "_id": { "type": "string" },
               "role": { "type": "string" },
               "username": { "type": "string" },
               "name": { "type": "string" }
-            }
+            },
+            "required": ["accessToken", "refreshToken"]
           }
         },
         {
@@ -504,17 +506,7 @@
                 "type": "button",
                 "text": "Logout",
                 "action": {
-                  "action": "apiCall",
-                  "service": "auth",
-                  "endpoint": "logout",
-                  "onSuccess": {
-                    "action": "navigate",
-                    "route": "/"
-                  },
-                  "onError": {
-                    "action": "showError",
-                    "params": { "message": "Logout failed" }
-                  }
+                  "action": "authLogout"
                 },
                 "style": {
                   "backgroundColor": "${theme.error}",
@@ -972,6 +964,7 @@
   "state": {
     "global": {
       "user": {
+        "type": "object",
         "model": "User",
         "persistence": "secure",
         "default": {

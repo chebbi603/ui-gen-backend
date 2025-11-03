@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QueueService } from './queue.service';
 import { ConfigService } from '@nestjs/config';
 import { GeminiGenerationProcessor } from './processors/gemini-generation.processor';
+import { AnalyzeEventsProcessor } from './processors/analyze-events.processor';
 
 describe('QueueService (unit)', () => {
   let service: QueueService;
   const mockConfig: any = { get: jest.fn() };
   const mockProcessor: any = { process: jest.fn() };
+  const mockAnalyze: any = { process: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -15,6 +17,7 @@ describe('QueueService (unit)', () => {
         QueueService,
         { provide: ConfigService, useValue: mockConfig },
         { provide: GeminiGenerationProcessor, useValue: mockProcessor },
+        { provide: AnalyzeEventsProcessor, useValue: mockAnalyze },
       ],
     }).compile();
 
