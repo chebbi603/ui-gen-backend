@@ -108,6 +108,9 @@ export class ContractValidator {
     const stats: ValidationStats = makeEmptyStats();
 
     // Required sections
+    if (typeof contract.version !== 'string' || contract.version.trim().length === 0) {
+      errors.push({ path: 'version', message: 'Required section missing or invalid' });
+    }
     if (typeof contract.meta !== 'object' || contract.meta == null) {
       errors.push({
         path: 'meta',
@@ -119,6 +122,17 @@ export class ContractValidator {
         path: 'pagesUI',
         message: 'Required section missing or invalid',
       });
+    }
+    if (typeof contract.thresholds !== 'object' || contract.thresholds == null) {
+      errors.push({ path: 'thresholds', message: 'Required section missing or invalid' });
+    } else {
+      // Basic numeric check for thresholds values
+      const t = contract.thresholds as Record<string, any>;
+      for (const [k, v] of Object.entries(t)) {
+        if (typeof v !== 'number') {
+          warnings.push({ path: `thresholds.${k}`, message: 'Expected numeric value' });
+        }
+      }
     }
 
     // Components/pages

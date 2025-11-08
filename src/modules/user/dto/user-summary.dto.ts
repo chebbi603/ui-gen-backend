@@ -5,6 +5,12 @@ export class UserSummaryDto {
   id: string;
 
   @ApiProperty({ required: false })
+  username?: string;
+
+  @ApiProperty({ required: false })
+  email?: string;
+
+  @ApiProperty({ required: false })
   name: string;
 
   @ApiProperty({ description: 'ISO timestamp' })

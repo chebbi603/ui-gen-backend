@@ -6,7 +6,8 @@ This document describes the contract validation system now implemented in the ba
 ## Overview
 
 The validator checks canonical JSON contracts and returns structured results:
-- Required sections: `meta`, `pagesUI` (and optional `eventsActions`, `services`, `state`, `assets`)
+- Required sections: `version` (string, non-empty), `meta`, `pagesUI`, `thresholds` (object with numeric values)
+- Optional sections: `eventsActions`, `services`, `state`, `assets`, and any additional top-level keys; unknown keys are allowed and ignored by the validator.
 - Pages and components: supported `type`, bindings format, inline `validation` rules
 - Component actions: `onTap`, `onChanged`, `onSubmit` with required parameters per action
 - Routes: `pagesUI.routes` reference existing `pagesUI.pages`
@@ -87,8 +88,20 @@ Minimal invalid contract:
 {}
 ```
 Returns errors:
+- `version: Required section missing or invalid`
 - `meta: Required section missing or invalid`
 - `pagesUI: Required section missing or invalid`
+- `thresholds: Required section missing or invalid`
+
+Minimal valid contract:
+```json
+{
+  "version": "1.0.0",
+  "meta": {},
+  "thresholds": { "llmConfidence": 0.7 },
+  "pagesUI": { "pages": {} }
+}
+```
 
 Action validation example:
 ```json
@@ -110,6 +123,12 @@ Returns errors:
 - Keep `routes` in sync with `pages` — a missing `pageId` produces an error.
 - Inline `validation` keys outside the supported set are flagged as warnings.
 - For icons: use `assets.icons.mapping` to map icon names referenced in pages.
+
+## Version and Thresholds Requirement (2025-11-05)
+
+- `version` is now required at the top level and must be a non-empty string. Semver formatting (e.g., `"1.0.0"`) is recommended and used by the backend when stamping generated contracts.
+- `thresholds` is now required and must be an object whose values are numeric. The validator produces warnings for any non-numeric entries under `thresholds`.
+- Generation and fallbacks ensure `version` and `thresholds` are present before validation and persistence.
 
 ## Files
 

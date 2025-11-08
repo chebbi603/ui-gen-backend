@@ -6,6 +6,7 @@ import { ContractService } from '../../contract/services/contract.service';
 import { UserContractService } from '../../user-contract/services/user-contract.service';
 import { ContractValidationService } from '../../contract/services/contract-validation.service';
 import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../../../common/services/cache.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types as MongooseTypes } from 'mongoose';
 import { LlmJob } from '../../llm/entities/llm-job.entity';
@@ -20,10 +21,11 @@ export class GeminiGenerationProcessor {
     private readonly userContractService: UserContractService,
     private readonly validationService: ContractValidationService,
     private readonly config: ConfigService,
+    private readonly cache: CacheService,
     @InjectModel(LlmJob.name) private readonly llmJobModel: Model<LlmJob>,
   ) {}
 
-  async process(job: Job<GeminiGenerationJobData>): Promise<{ contractId?: string; version?: string }> {
+  async process(job: Job<GeminiGenerationJobData>): Promise<{ contractId?: string; version?: string; explanation?: string }> {
     const { userId, baseContract, version } = job.data;
     try {
       const startedAt = new Date();
@@ -38,13 +40,25 @@ export class GeminiGenerationProcessor {
       await llmJob.save();
       await job.updateProgress(25);
 
-      const { json, version: nextVersion } =
+      const { json, version: nextVersion, llmDebug } =
         await this.llmService.generateOptimizedContract({
           userId,
           baseContract,
           version,
         });
       await job.updateProgress(50);
+      // Persist raw prompts and response for auditing
+      if (llmDebug) {
+        await this.llmJobModel.updateOne(
+          { jobId: String(job.id) },
+          {
+            $set: {
+              requestPayload: llmDebug.request,
+              responseText: llmDebug.rawResponse,
+            },
+          },
+        );
+      }
       // Pre-persistence validation of generated contract JSON
       const validation = this.validationService.validate(json as Record<string, any>);
       if (!validation.isValid) {
@@ -70,6 +84,11 @@ export class GeminiGenerationProcessor {
         'ADMIN',
       );
 
+      // Invalidate merged-contract cache for this user so GET /users/:id/contract reflects new personalized contract
+      try {
+        await this.cache.del(`contracts:user:${userId}`);
+      } catch {}
+
       const completedAt = new Date();
       const durationMs = completedAt.getTime() - startedAt.getTime();
       await this.llmJobModel.updateOne(
@@ -88,7 +107,11 @@ export class GeminiGenerationProcessor {
       );
       await job.updateProgress(100);
       this.logger.log(`Processed gemini-generation job for userId=${userId}.`);
-      return { contractId: (contract as any)._id?.toString?.(), version: contract.version };
+      return {
+        contractId: (contract as any)._id?.toString?.(),
+        version: contract.version,
+        explanation: (contract as any).meta?.optimizationExplanation,
+      };
     } catch (err: any) {
       const msg = err?.message || String(err);
       this.logger.error(`Gemini generation job failed for userId=${userId}: ${msg}`);

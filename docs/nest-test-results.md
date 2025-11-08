@@ -1,6 +1,138 @@
 Project: nestjs-mongo (NestJS)
 # Jest Test Results
 
+## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — json.meta.version reflects personalized
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~6.8 s
+- Change:
+  - `GET /users/:id/contract` now sets `json.meta.version` to the personalized version when available, while keeping other `meta` fields from the canonical contract.
+  - This ensures Flutter clients that read `meta.version` from the inner `json` correctly display the personalized version, even though the merge preserves canonical meta.
+- Notes:
+  - All suites remained green; controller-spec seams unaffected since the change is a field rewrite post-merge.
+  - Existing cache invalidations for `contracts:user:{id}` on generation and upsert continue to apply.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — 404 fallback for missing personalized
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.6 s
+- Change:
+  - `GET /users/:id/contract` now returns `404 Not Found` when a personalized contract does not exist (or fails to merge), rather than returning canonical with `200`.
+  - Rationale: Aligns with the Flutter client, which explicitly falls back to canonical on a `404` from the personalized endpoint.
+  - Canonical endpoints are unchanged: use `GET /contracts/public/canonical` as the fallback.
+- Notes:
+  - All suites remained green; existing controller and service specs did not assume canonical fallback from `/users/:id/contract`.
+  - Benign `--localstorage-file` warnings observed in queue specs; no impact on assertions.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — Personalized version in response
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~8.4 s
+- Notes:
+  - GET `/users/:id/contract` now sets `version` from the personalized contract when present, not the canonical.
+  - Cache invalidation remains in `GeminiGenerationProcessor` and `UserController.updateUserContract`.
+  - QueueModule still provides `CacheService`; benign `--localstorage-file` warnings observed.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — Version + thresholds enforcement
+- Command: `npm run test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.6 s
+- Notes:
+  - ContractValidator now requires top-level `version` (string) and `thresholds` (object) in addition to `meta` and `pagesUI`.
+  - Unit tests updated to reflect these requirements; minimal valid contract example includes `version` and numeric `thresholds`.
+  - GeminiService embeds `json.version`, strengthens `responseSchema` to require `version`, and increases `maxOutputTokens` (contract calls).
+  - GeminiGenerationProcessor persists raw `requestPayload` and `responseText` on `LlmJob` for auditability.
+  - Benign queue warnings (`--localstorage-file`) and fixture-driven circuit breaker logs observed; no impact on assertions.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — Full contract + thresholds
+- Command: `npm run test`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.7 s
+- Notes:
+  - Prompts updated to require full contract JSON: `meta`, `pagesUI` (authenticated-only), and `thresholds` (numeric).
+  - Gemini generation enforces `application/json` output and applies a `responseSchema`; `maxOutputTokens` set to `8192`.
+  - Backend builds a full authenticated-only contract, adds thresholds fallback when missing, and stamps `meta.version` on return.
+  - Benign queue warnings (`--localstorage-file`) observed in specs; no impact on assertions.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — Docs alignment
+- Command: `npm run test`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.4 s
+- Notes:
+  - Verified queue, Gemini controller/service, and contract validation remain green after documentation additions.
+  - Circuit breaker logs observed during fixtures are benign; no impact on assertions.
+
+## Latest Run Summary — 2025-11-05 (Processor return includes explanation)
+- Command: `npm test --silent`
+- Test Suites: pending (IDE run timed out)
+- Tests: pending (IDE run timed out)
+- Snapshots: 0 total
+- Time: n/a
+- Notes:
+  - Updated `gemini-generation.processor.spec.ts` success-path expectation to include `explanation` in the return value: `{ contractId, version, explanation }`.
+  - Backend processor now returns `explanation` sourced from `contract.meta.optimizationExplanation`. Queue status `GET /gemini/jobs/:jobId` example updated accordingly in `docs/nest-api.md`.
+  - Local run instructions: from `nestjs-mongo/`, execute `npm test --silent`. Expect all suites to pass with the single spec assertion change.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — Authenticated fallback fix
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.7 s
+- Notes:
+  - GeminiService now falls back to base authenticated pages when LLM returns meta-only JSON, ensuring `pagesUI.pages` is present in saved contracts.
+  - Queue/Gemini specs continue to log simulated validation/network failures; circuit breaker behavior unchanged.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed) — Prompt tightening
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~7.6 s
+- Notes:
+  - Prompt changes verified: optimization now enforces at least one concrete change; analyze-events prompt ensures non-empty arrays when events exist and adds deduplication/severity guidance.
+  - Queue/Gemini specs log expected validation/network fixtures; circuit breaker logs observed but do not affect assertions.
+
+## Latest Run Summary — 2025-11-05 (Unit — 73 tests passed)
+- Command: `npm run test`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~6.3 s
+- Notes:
+  - Queue/Gemini specs intentionally log simulated failures (validation/network), but assertions pass.
+  - No regressions related to registration or initial contract assignment.
+
+
+## Latest Run Summary — 2025-11-04 (E2E — 3 suites passed)
+- Command: `npm run test:e2e --silent`
+- Test Suites: 3 passed, 3 total
+- Tests: 6 passed, 6 total
+- Snapshots: 0 total
+- Time: ~6.6 s
+- Notes:
+  - Backend kept default port `8081`; canonical contract successfully served.
+  - Benign warnings: `--localstorage-file` without a valid path.
+  - Jest reported a forced-exit notice (worker did not exit gracefully) — known teardown warning, unrelated to assertions.
+
+### Update — Home UI spacing fix (contract-only)
+- Change: Added a `row` with `spacing: 16` on `home` containing two `card`s (Music, Podcasts) and ensured `button` has `margin: { top: 8 }` to avoid “glued to text”.
+- Overflow mitigation: Removed external margins and relied on internal padding and row spacing to prevent right-side overflow.
+- Verification: Flutter app relaunched; diagnostics show `page=home type=row` and spaced `card`/`button` components created.
+- No backend code changes; E2E remained green.
+
 ## Latest Run Summary — 2025-11-03 (Unit — 73 tests passed)
 - Command: `npm test --silent`
 - Test Suites: 20 passed, 20 total

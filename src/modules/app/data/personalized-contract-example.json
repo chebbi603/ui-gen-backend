@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.0.1",
+    "version": "0.0.1",
     "description": "Personalized override for user with fast-scrolling preference - larger cards, top-placed search.",
     "personalizationReason": "Based on analytics: high abandonment on music grid (small items), low engagement on bottom sections. Optimizations: enlarge grid to 3 columns, move search higher.",
     "generatedBy": "AI-Optimizer",

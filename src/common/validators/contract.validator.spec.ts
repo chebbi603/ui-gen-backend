@@ -15,10 +15,20 @@ describe('validateContractJson (wrapper)', () => {
         m.includes('pagesUI: Required section missing or invalid'),
       ),
     ).toBe(true);
+    expect(
+      res.errors?.some((m) =>
+        m.includes('version: Required section missing or invalid'),
+      ),
+    ).toBe(true);
+    expect(
+      res.errors?.some((m) =>
+        m.includes('thresholds: Required section missing or invalid'),
+      ),
+    ).toBe(true);
   });
 
   it('returns valid for minimal valid contract', () => {
-    const res = validateContractJson({ meta: {}, pagesUI: { pages: {} } });
+    const res = validateContractJson({ version: '0.1.0', meta: {}, pagesUI: { pages: {} }, thresholds: { rageThreshold: 3 } });
     expect(res.valid).toBe(true);
     expect(res.errors).toBeUndefined();
   });

@@ -42,6 +42,13 @@ export class LlmJob extends Document {
   @Prop({ type: Object })
   analyzedMetrics?: Record<string, any>;
 
+  // Debug logging for LLM interactions
+  @Prop({ type: Object })
+  requestPayload?: Record<string, any>;
+
+  @Prop({ type: String })
+  responseText?: string;
+
   @Prop({ type: MongooseTypes.ObjectId })
   contractId?: MongooseTypes.ObjectId;
 }

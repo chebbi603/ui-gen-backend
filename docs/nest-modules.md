@@ -151,6 +151,10 @@ Caching
   - `GeminiService` — provider-backed generation that incorporates aggregated analytics and pain point detection.
   - `GeminiClient` — initializes Google GenAI client when `LLM_PROVIDER=gemini` and `GEMINI_API_KEY` is set.
   - Caching: `CacheService` caches per-user analytics summary under `llm:analytics:{userId}` with TTL 300 seconds.
+  - Output specifics (Gemini):
+    - Prompts enforce full JSON with `meta`, `pagesUI` (authenticated-only pages), and numeric `thresholds`.
+    - Provider call enforces `application/json` output with a `responseSchema` and uses a higher token limit (`maxOutputTokens=8192`).
+    - Backend builds a full authenticated-only contract; applies thresholds fallback when missing; stamps `meta.version` for compatibility.
 Dependencies:
   - Imports `ContractModule`, `EventModule`, and `SessionModule`.
 

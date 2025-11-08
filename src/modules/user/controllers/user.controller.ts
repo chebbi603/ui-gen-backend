@@ -71,6 +71,8 @@ export class UserController {
       );
       res.push({
         id: u._id.toString(),
+        username: (u as any).username,
+        email: (u as any).email,
         name: u.name,
         lastActive: (lastEvent ?? (u as any).updatedAt)?.toISOString(),
         contractVersion: latestContract?.version ?? '',
@@ -109,9 +111,10 @@ export class UserController {
     // Retrieve personalized and canonical contracts
     const personalized = await this.contractService.findLatestByUser(id);
     const canonical = await this.contractService.findLatestCanonical();
+    // If neither exists, there is no contract in the system
     if (!personalized && !canonical) return null;
 
-    // If personalized exists, merge with canonical; else return canonical
+    // If personalized exists, merge with canonical and return 200
     try {
       if (personalized && (personalized as any).userId) {
         const mergedJson = this.contractMerge.mergeContracts(
@@ -123,10 +126,20 @@ export class UserController {
         const filteredJson = this.flutterFilter.filterForFlutter(
           (mergedJson ?? {}) as Record<string, unknown>,
         );
+        // Ensure the merged JSON exposes the personalized version via meta.version
+        try {
+          const personalizedVersion = (personalized as any)?.version;
+          if (personalizedVersion) {
+            const metaObj = ((filteredJson as any).meta ?? {}) as Record<string, any>;
+            (filteredJson as any).meta = { ...metaObj, version: personalizedVersion };
+          }
+        } catch (_) {
+          // Non-blocking: if meta rewrite fails, continue with filteredJson as-is
+        }
         const res: ContractDTO = {
           id: (canonical as any)?._id?.toString?.() || '',
           userId: id,
-          version: (canonical as any)?.version ?? (personalized as any)?.version,
+          version: (personalized as any)?.version ?? (canonical as any)?.version,
           json: filteredJson,
           createdAt: createdAtCanon
             ? createdAtCanon.toISOString()
@@ -144,26 +157,10 @@ export class UserController {
         `Contract merge failed for user ${id} (canonVer=${(canonical as any)?.version}, userVer=${(personalized as any)?.version})`,
         (err as Error)?.stack ?? String(err),
       );
-      // On error, gracefully degrade to canonical
+      // On error, indicate personalized is unavailable so clients can fall back
     }
-
-    // No personalized or merge errored: return canonical
-    const createdAt = (canonical as any)?.createdAt as Date | undefined;
-    const updatedAt = (canonical as any)?.updatedAt as Date | undefined;
-    const filteredCanonJson = this.flutterFilter.filterForFlutter(
-      ((canonical as any)?.json ?? {}) as Record<string, unknown>,
-    );
-    const res: ContractDTO = {
-      id: (canonical as any)?._id?.toString?.() || '',
-      userId: id,
-      version: (canonical as any)?.version ?? '',
-      json: filteredCanonJson,
-      createdAt: createdAt ? createdAt.toISOString() : new Date().toISOString(),
-      updatedAt: updatedAt ? updatedAt.toISOString() : new Date().toISOString(),
-      meta: (canonical as any)?.meta ?? {},
-    };
-    await this.cache.set(cacheKey, res, 300);
-    return res;
+    // No personalized contract found (or merge failed): return 404 to allow client fallback
+    throw new NotFoundException('Personalized contract not found');
   }
 
   // Dashboard: POST /users/{id}/contract

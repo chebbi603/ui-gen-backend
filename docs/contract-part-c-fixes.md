@@ -56,6 +56,12 @@ This document details changes applied to `src/modules/app/data/canonical-contrac
   - Music list image margin-right: `12` → `8`.
   - Ebooks card padding: `12` → `16`; image margin-right: `12` → `8`.
 
+### 7) Home Cards Spacing and Overflow Fix
+- Added a `row` with `spacing: 16` to host two quick cards: Music and Podcasts.
+- Each card uses `padding: { all: 16 }` and `borderRadius: 12` with surface colors.
+- Buttons now include `margin: { top: 8 }` and compact padding to avoid appearing glued to preceding text.
+- Removed external margins; rely on row spacing and card padding to prevent right-side overflow on small screens.
+
 ## Flutter Parser Expectations (Reference)
 
 - Theme tokens: `${theme.<name>}` must resolve from `themingAccessibility.tokens[defaultTheme]`.

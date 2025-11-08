@@ -88,7 +88,7 @@ export class GeminiService {
     userId: string;
     baseContract?: Record<string, unknown>;
     version?: string;
-  }): Promise<{ version: string; json: Record<string, unknown> }> {
+  }): Promise<{ version: string; json: Record<string, unknown>; llmDebug?: { userPrompt: string; systemPrompt: string; rawResponse: string; request: any } }> {
     const provider = (
       this.config.get<string>('llm.provider') || ''
     ).toLowerCase();
@@ -130,18 +130,31 @@ export class GeminiService {
         painPoints,
       );
 
-      const text = await this.callGemini(userPrompt, systemPrompt);
+      this.logger.debug(`Gemini user prompt length=${userPrompt.length}, authPages=${authPages.size}`);
+      const { text, request } = await this.callGeminiContractWithDebug(userPrompt, systemPrompt);
+      this.logger.debug(`Gemini raw response (first 600 chars): ${String(text || '').slice(0, 600)}`);
       const parsed = parseJsonStrict(text);
 
-      // Build partial contract from authenticated pages only
-      const partialJson = this.buildAuthenticatedPartial(
+      // Build full authenticated-only contract from LLM output with thresholds fallback
+      const fullJson = this.buildAuthenticatedFull(
         parsed,
         authPages,
+        current as Record<string, any>,
       );
 
-      const validation = validateContractJson(partialJson);
+      // Pre-stamp version before validation to enforce completeness
+      const currentVersion =
+        params.version ||
+        (await this.contractService.findLatestByUser(params.userId))?.version ||
+        '0.1.0';
+      (fullJson as any).version = currentVersion;
+      (fullJson as any).meta = {
+        ...((fullJson as any)?.meta || {}),
+        version: currentVersion,
+      };
+      const validation = validateContractJson(fullJson);
       if (!validation.valid) {
-        const retryText = await this.callGemini(
+        const { text: retryText, request: retryReq } = await this.callGeminiContractWithDebug(
           buildRetryPrompt(
             current as Record<string, any>,
             analytics as any,
@@ -151,33 +164,41 @@ export class GeminiService {
           systemPrompt,
         );
         const retried = parseJsonStrict(retryText);
-        const retriedPartial = this.buildAuthenticatedPartial(
+        const retriedPartial = this.buildAuthenticatedFull(
           retried,
           authPages,
+          current as Record<string, any>,
         );
+        (retriedPartial as any).version = currentVersion;
+        (retriedPartial as any).meta = {
+          ...((retriedPartial as any)?.meta || {}),
+          version: currentVersion,
+        };
         const retryValidation = validateContractJson(retriedPartial);
         if (!retryValidation.valid) {
           this.recordFailure();
           return this.fallbackSafe(current as Record<string, any>, params);
         }
         this.recordSuccess();
-        const nextVersion = this.bumpPatch(
-          params.version ||
-            (await this.contractService.findLatestByUser(params.userId))
-              ?.version ||
-            '0.1.0',
-        );
-        return { version: nextVersion, json: retriedPartial };
+        const nextVersion = this.bumpPatch(currentVersion);
+        // Finalize version in both top-level and meta
+        (retriedPartial as any).version = nextVersion;
+        (retriedPartial as any).meta = {
+          ...((retriedPartial as any)?.meta || {}),
+          version: nextVersion,
+        };
+        return { version: nextVersion, json: retriedPartial, llmDebug: { userPrompt, systemPrompt, rawResponse: retryText, request: retryReq } };
       }
 
       this.recordSuccess();
-      const nextVersion = this.bumpPatch(
-        params.version ||
-          (await this.contractService.findLatestByUser(params.userId))
-            ?.version ||
-          '0.1.0',
-      );
-  return { version: nextVersion, json: partialJson };
+      const nextVersion = this.bumpPatch(currentVersion);
+      // Finalize version in both top-level and meta
+      (fullJson as any).version = nextVersion;
+      (fullJson as any).meta = {
+        ...((fullJson as any)?.meta || {}),
+        version: nextVersion,
+      };
+      return { version: nextVersion, json: fullJson, llmDebug: { userPrompt, systemPrompt, rawResponse: text, request } };
     } catch (err: any) {
       this.logger.error(`Gemini generation failed: ${err?.message || err}`);
       this.recordFailure();
@@ -251,7 +272,7 @@ export class GeminiService {
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
         responseMimeType: 'application/json',
       },
     };
@@ -260,6 +281,59 @@ export class GeminiService {
       (res && (res.text || res.candidates?.[0]?.content?.parts?.[0]?.text)) ||
       '';
     return text;
+  }
+
+  // Contract-specific Gemini call with explicit JSON schema and debug capture
+  private async callGeminiContractWithDebug(
+    userPrompt: string,
+    systemPrompt: string,
+  ): Promise<{ text: string; request: any }> {
+    const model = this.config.get<string>('llm.gemini.model') || 'gemini-2.5-pro';
+    const ai: any = (this.gemini as any)['ai'];
+    if (!ai) throw new Error('Gemini client not initialized.');
+    const req: any = {
+      model,
+      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        temperature: 0.5,
+        maxOutputTokens: 16384,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          properties: {
+            version: { type: 'string' },
+            meta: {
+              type: 'object',
+              properties: {
+                optimizationExplanation: { type: 'string' },
+                isPartial: { type: 'boolean' },
+                generatedAt: { type: 'string' },
+                version: { type: 'string' },
+              },
+              required: ['optimizationExplanation', 'isPartial', 'generatedAt'],
+            },
+            pagesUI: {
+              type: 'object',
+              properties: {
+                pages: { type: 'object' },
+              },
+              required: ['pages'],
+            },
+            thresholds: {
+              type: 'object',
+              additionalProperties: { type: 'number' },
+            },
+          },
+          required: ['version', 'meta', 'pagesUI', 'thresholds'],
+        },
+      },
+    };
+    const res = await ai.models.generateContent(req);
+    const text =
+      (res && (res.text || res.candidates?.[0]?.content?.parts?.[0]?.text)) ||
+      '';
+    return { text, request: req };
   }
 
 
@@ -281,6 +355,14 @@ export class GeminiService {
       Object.entries(pages || {}).forEach(([name, page]) => {
         if (authPages.has(name)) filtered[name] = page;
       });
+      const defaultThresholds = {
+        rageThreshold: 3,
+        rageWindowMs: 1000,
+        repeatThreshold: 3,
+        repeatWindowMs: 2000,
+        formRepeatWindowMs: 10000,
+        formFailWindowMs: 10000,
+      } as Record<string, number>;
       const json = {
         meta: {
           ...(((current as any)?.meta as any) || {}),
@@ -289,6 +371,7 @@ export class GeminiService {
           isPartial: true,
           generatedAt: new Date().toISOString(),
         },
+        thresholds: defaultThresholds,
         pagesUI: { pages: filtered },
       } as Record<string, unknown>;
       const nextVersion = this.bumpPatch(
@@ -297,6 +380,8 @@ export class GeminiService {
             ?.version ||
           '0.1.0',
       );
+      (json as any).version = nextVersion;
+      (json as any).meta = { ...((json as any).meta || {}), version: nextVersion };
       return { version: nextVersion, json };
     })();
   }
@@ -311,15 +396,26 @@ export class GeminiService {
     Object.entries(pages || {}).forEach(([name, page]) => {
       if (authPages.has(name)) filtered[name] = page;
     });
+    const defaultThresholds = {
+      rageThreshold: 3,
+      rageWindowMs: 1000,
+      repeatThreshold: 3,
+      repeatWindowMs: 2000,
+      formRepeatWindowMs: 10000,
+      formFailWindowMs: 10000,
+    } as Record<string, number>;
     const json = {
       meta: {
         optimizationExplanation: 'Fallback due to validation failure',
         isPartial: true,
         generatedAt: new Date().toISOString(),
       },
+      thresholds: defaultThresholds,
       pagesUI: { pages: filtered },
     };
     const nextVersion = this.bumpPatch(params.version || '0.1.0');
+    (json as any).version = nextVersion;
+    (json as any).meta = { ...((json as any).meta || {}), version: nextVersion };
     return { version: nextVersion, json };
   }
 
@@ -342,10 +438,12 @@ export class GeminiService {
     return new Set(names);
   }
 
-  // Helper: build partial authenticated-only contract from LLM output
+  // Helper: build partial authenticated-only contract from LLM output,
+  // and fallback to base contract's authenticated pages if LLM returns none.
   private buildAuthenticatedPartial(
     llmOutput: Record<string, any>,
     authPages: Set<string>,
+    baseContract?: Record<string, any>,
   ): Record<string, any> {
     const outPages = (llmOutput as any)?.pagesUI?.pages || {};
     const filtered: Record<string, any> = {};
@@ -357,6 +455,17 @@ export class GeminiService {
         filtered[name] = page;
       }
     });
+
+    // Fallback: if LLM output doesn't include any pages, copy from base contract
+    if (Object.keys(filtered).length === 0 && baseContract) {
+      const basePages = (baseContract as any)?.pagesUI?.pages || {};
+      Object.entries(basePages || {}).forEach(([name, page]) => {
+        if (authPages.has(name)) {
+          filtered[name] = page;
+        }
+      });
+    }
+
     return {
       meta: {
         ...((llmOutput as any)?.meta || {}),
@@ -365,6 +474,59 @@ export class GeminiService {
         isPartial: true,
         generatedAt: new Date().toISOString(),
       },
+      pagesUI: { pages: filtered },
+    };
+  }
+
+  // Helper: build full authenticated-only contract and include thresholds fallback.
+  private buildAuthenticatedFull(
+    llmOutput: Record<string, any>,
+    authPages: Set<string>,
+    baseContract?: Record<string, any>,
+  ): Record<string, any> {
+    const outPages = (llmOutput as any)?.pagesUI?.pages || {};
+    const filtered: Record<string, any> = {};
+    Object.entries(outPages || {}).forEach(([name, page]) => {
+      const scope = String(
+        ((page as any)?.meta?.scope ?? (page as any)?.scope ?? (page as any)?.pageScope ?? '') || '',
+      ).toLowerCase();
+      if (scope === 'authenticated' || authPages.has(name)) {
+        filtered[name] = page;
+      }
+    });
+
+    // Fallback: if LLM output doesn't include any pages, copy from base contract
+    if (Object.keys(filtered).length === 0 && baseContract) {
+      const basePages = (baseContract as any)?.pagesUI?.pages || {};
+      Object.entries(basePages || {}).forEach(([name, page]) => {
+        if (authPages.has(name)) {
+          filtered[name] = page;
+        }
+      });
+    }
+
+    const defaultThresholds = {
+      rageThreshold: 3,
+      rageWindowMs: 1000,
+      repeatThreshold: 3,
+      repeatWindowMs: 2000,
+      formRepeatWindowMs: 10000,
+      formFailWindowMs: 10000,
+    } as Record<string, number>;
+
+    const thresholdsRaw = (llmOutput as any)?.thresholds;
+    const thresholds =
+      thresholdsRaw && typeof thresholdsRaw === 'object' ? thresholdsRaw : defaultThresholds;
+
+    return {
+      meta: {
+        ...((llmOutput as any)?.meta || {}),
+        optimizationExplanation:
+          ((llmOutput as any)?.meta?.optimizationExplanation || 'Generated by Gemini'),
+        isPartial: false,
+        generatedAt: new Date().toISOString(),
+      },
+      thresholds,
       pagesUI: { pages: filtered },
     };
   }
@@ -399,13 +561,19 @@ export class GeminiService {
     }
 
     const constraints = [
-      'Return only JSON with painPoints and improvements arrays, each max length 5',
-      'Ground insights in provided events; avoid hallucination',
+      'Return only JSON with painPoints and improvements arrays, each max length 5.',
+      'Ground insights strictly in provided events; avoid hallucination.',
+      'When context.eventCount > 0, include AT LEAST 1 painPoint and 1 improvement (never return empty arrays).',
+      'Deduplicate signals by (elementId + page + event type); consolidate repeated patterns.',
+      'Severity mapping: rage-click=high; error=high; form-abandonment=high; long-dwell=medium; other=medium by default.',
+      'Each item should be concise: short actionable title and one-sentence description.',
+      'Prefer using elementId and page from events; if unavailable, omit those fields (do not invent IDs).',
+      'Do not include code, markdown, or commentary — JSON only.',
     ];
 
     const userPrompt = JSON.stringify({
       task:
-        'Analyze mobile app tracking events and identify top UX pain points AND top UX improvements (nice-to-haves).',
+        'Analyze tracking events to identify top UX pain points tied to specific components/pages AND propose targeted improvements that address or mitigate those issues.',
       format: 'JSON only',
       schema: {
         painPoints: [

@@ -11,6 +11,7 @@ import { LlmJob, LlmJobSchema } from '../llm/entities/llm-job.entity';
 import { GeminiController } from './controllers/gemini.controller';
 import { UserModule } from '../user/user.module';
 import { EventModule } from '../event/event.module';
+import { CacheService } from '../../common/services/cache.service';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { EventModule } from '../event/event.module';
     MongooseModule.forFeature([{ name: LlmJob.name, schema: LlmJobSchema }]),
   ],
   controllers: [GeminiController],
-  providers: [QueueService, GeminiGenerationProcessor, AnalyzeEventsProcessor],
+  providers: [QueueService, GeminiGenerationProcessor, AnalyzeEventsProcessor, CacheService],
   exports: [QueueService],
 })
 export class QueueModule {}

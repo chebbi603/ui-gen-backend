@@ -1,7 +1,7 @@
 {
   "meta": {
     "appName": "DynamicUXDemo",
-    "version": "1.0.0",
+    "version": "0.0.0",
     "schemaVersion": "2.0.0",
     "description": "MVP for dynamic UX thesis - feature ranking experiment with music, podcasts, audiobooks",
     "authors": ["Thesis Researcher"],
@@ -310,16 +310,15 @@
             "text": "Discover Your Personalized Experience",
             "style": {
               "color": "${theme.onSurface}",
-              "fontSize": 24,
-              "fontWeight": "bold"
+              "use": "largeTitle"
             }
           },
           {
             "type": "text",
             "text": "This demo app adapts to your needs using AI.",
             "style": {
-              "color": "${theme.onSurface}",
-              "fontSize": 16,
+              "color": "${theme.onSurfaceVariant}",
+              "use": "body",
               "margin": { "top": 16 }
             }
           },
@@ -367,8 +366,7 @@
                 "text": "Welcome Back",
                 "style": {
                   "color": "${theme.onSurface}",
-                  "fontSize": 24,
-                  "fontWeight": "bold",
+                  "use": "title1",
                   "margin": { "bottom": 24 }
                 }
               },
@@ -445,12 +443,11 @@
         "children": [
           {
             "type": "text",
-            "text": "Welcome Back, ${state.user.name}!",
-            "dependencies": ["state.user.name"],
+            "text": "Welcome Back, ${state.global.user.name}!",
+            "dependencies": ["state.global.user.name"],
             "style": {
               "color": "${theme.onSurface}",
-              "fontSize": 24,
-              "fontWeight": "bold",
+              "use": "title1",
               "margin": { "bottom": 8 }
             }
           },
@@ -466,6 +463,93 @@
             }
           },
           {
+            "type": "grid",
+            "columns": 2,
+            "spacing": 16,
+            "children": [
+              {
+                "type": "card",
+                "style": {
+                  "backgroundColor": "${theme.surface}",
+                  "padding": { "all": 16 },
+                  "borderRadius": 12
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "Music",
+                    "style": {
+                      "color": "${theme.onSurface}",
+                      "use": "title2",
+                      "margin": { "bottom": 8 }
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": "Browse curated tracks.",
+                    "style": {
+                      "color": "${theme.onSurfaceVariant}",
+                      "use": "body",
+                      "margin": { "bottom": 8 }
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "text": "Open",
+                    "action": { "type": "navigate", "route": "/music" },
+                    "style": {
+                      "backgroundColor": "${theme.primary}",
+                      "color": "${theme.onPrimary}",
+                      "padding": { "vertical": 8, "horizontal": 12 },
+                      "borderRadius": 8,
+                      "margin": { "top": 8 }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "card",
+                "style": {
+                  "backgroundColor": "${theme.surface}",
+                  "padding": { "all": 16 },
+                  "borderRadius": 12
+                },
+                "children": [
+                  {
+                    "type": "text",
+                    "text": "Podcasts",
+                    "style": {
+                      "color": "${theme.onSurface}",
+                      "use": "title2",
+                      "margin": { "bottom": 8 }
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": "Learn and be entertained.",
+                    "style": {
+                      "color": "${theme.onSurfaceVariant}",
+                      "use": "body",
+                      "margin": { "bottom": 8 }
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "text": "Open",
+                    "action": { "type": "navigate", "route": "/podcasts" },
+                    "style": {
+                      "backgroundColor": "${theme.primary}",
+                      "color": "${theme.onPrimary}",
+                      "padding": { "vertical": 8, "horizontal": 12 },
+                      "borderRadius": 8,
+                      "margin": { "top": 8 }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "type": "card",
             "style": {
               "backgroundColor": "${theme.surface}",
@@ -479,8 +563,7 @@
                 "text": "User Info",
                 "style": {
                   "color": "${theme.onSurface}",
-                  "fontSize": 18,
-                  "fontWeight": "semibold",
+                  "use": "title2",
                   "margin": { "bottom": 8 }
                 }
               },
@@ -490,7 +573,7 @@
                 "dependencies": ["state.user.email"],
                 "style": {
                   "color": "${theme.onSurfaceVariant}",
-                  "fontSize": 14,
+                  "use": "body",
                   "margin": { "bottom": 8 }
                 }
               },
@@ -534,8 +617,7 @@
             "text": "Songs",
             "style": {
               "color": "${theme.onSurface}",
-              "fontSize": 24,
-              "fontWeight": "semibold",
+              "use": "title1",
               "margin": { "top": 16, "bottom": 8 }
             }
           },
@@ -592,6 +674,7 @@
                 "backgroundColor": "${theme.surface}",
                 "borderRadius": 12
               },
+              "spacing": 12,
               "onTap": {
                 "action": "apiCall",
                 "service": "analytics",
@@ -608,12 +691,12 @@
                   "src": "${item.imageUrl}",
                   "width": 60,
                   "height": 60,
-                  "borderRadius": 4,
-                  "margin": { "right": 12 }
+                  "borderRadius": 4
                 },
                 {
                   "type": "column",
                   "flex": 1,
+                  "spacing": 4,
                   "children": [
                     {
                       "type": "text",
@@ -622,7 +705,7 @@
                       "overflow": "ellipsis",
                       "style": {
                         "color": "${theme.onSurface}",
-                        "fontSize": 16,
+                        "use": "body",
                         "fontWeight": "medium"
                       }
                     },
@@ -633,7 +716,7 @@
                       "overflow": "ellipsis",
                       "style": {
                         "color": "${theme.onSurfaceVariant}",
-                        "fontSize": 14
+                        "use": "body"
                       }
                     },
                     {
@@ -642,7 +725,7 @@
                       "maxLines": 1,
                       "style": {
                         "color": "${theme.onSurfaceVariant}",
-                        "fontSize": 12
+                        "use": "caption"
                       }
                     }
                   ]
@@ -652,7 +735,6 @@
                   "icon": "play_arrow",
                   "size": 24,
                   "color": "${theme.primary}",
-                  "margin": { "left": 12 },
                   "action": {
                     "action": "apiCall",
                     "service": "analytics",
@@ -684,8 +766,7 @@
             "text": "Podcasts",
             "style": {
               "color": "${theme.onSurface}",
-              "fontSize": 24,
-              "fontWeight": "semibold",
+              "use": "title1",
               "margin": { "top": 16, "bottom": 8 }
             }
           },
@@ -693,7 +774,7 @@
             "type": "grid",
             "id": "podcastsGrid",
             "columns": 2,
-            "style": { "gap": 12 },
+            "spacing": 12,
             "dataSource": {
               "type": "static",
               "data": [
@@ -729,7 +810,8 @@
               "style": {
                 "margin": { "right": 8, "bottom": 8 },
                 "borderRadius": 8,
-                "padding": { "all": 8 }
+                "padding": { "all": 8 },
+                "height": 150
               },
               "onTap": {
                 "action": "apiCall",
@@ -746,7 +828,7 @@
                   "type": "image",
                   "src": "${item.imageUrl}",
                   "width": 150,
-                  "height": 150,
+                  "height": 50,
                   "borderRadius": 8
                 },
                 {
@@ -754,7 +836,7 @@
                   "text": "${item.title}",
                   "style": {
                     "color": "${theme.onSurface}",
-                    "fontSize": 14,
+                    "use": "body",
                     "margin": { "top": 4 }
                   },
                   "alignment": "center"
@@ -764,7 +846,7 @@
                   "text": "by ${item.host}",
                   "style": {
                     "color": "${theme.onSurfaceVariant}",
-                    "fontSize": 12,
+                    "use": "caption",
                     "margin": { "top": 2 }
                   },
                   "alignment": "center"
@@ -774,7 +856,7 @@
                   "text": "${item.episodeCount} episodes",
                   "style": {
                     "color": "${theme.primary}",
-                    "fontSize": 12
+                    "use": "caption"
                   },
                   "alignment": "center"
                 },
@@ -816,8 +898,7 @@
             "text": "Audiobooks",
             "style": {
               "color": "${theme.onSurface}",
-              "fontSize": 24,
-              "fontWeight": "semibold",
+              "use": "title1",
               "margin": { "top": 16, "bottom": 16 }
             }
           },
@@ -877,6 +958,7 @@
               "children": [
                 {
                   "type": "row",
+                  "spacing": 12,
                   "children": [
                     {
                       "type": "image",
@@ -884,18 +966,19 @@
                       "width": 80,
                       "height": 120,
                       "borderRadius": 4,
-                      "margin": { "right": 12 }
+                      "margin": { "right": 0 }
                     },
                     {
                       "type": "column",
                       "flex": 1,
+                      "spacing": 4,
                       "children": [
                         {
                           "type": "text",
                           "text": "${item.title}",
                           "style": {
                             "color": "${theme.onSurface}",
-                            "fontSize": 16,
+                            "use": "body",
                             "fontWeight": "medium"
                           }
                         },
@@ -904,7 +987,7 @@
                           "text": "by ${item.author}",
                           "style": {
                             "color": "${theme.onSurfaceVariant}",
-                            "fontSize": 14
+                            "use": "body"
                           }
                         },
                         {
@@ -912,7 +995,7 @@
                           "text": "${item.duration}",
                           "style": {
                             "color": "${theme.onSurfaceVariant}",
-                            "fontSize": 14
+                            "use": "body"
                           }
                         },
                         {
@@ -920,19 +1003,21 @@
                           "text": "${item.progress}% complete",
                           "style": {
                             "color": "${theme.primary}",
-                            "fontSize": 14
+                            "use": "body"
+                          }
+                        },
+                        {
+                          "type": "progressIndicator",
+                          "value": "${item.progress / 100}",
+                          "max": 1,
+                          "style": {
+                            "color": "${theme.primary}",
+                            "margin": { "top": 8 },
+                            "width": "100%",
+                            "height": 4
                           }
                         }
                       ]
-                    },
-                    {
-                      "type": "progressIndicator",
-                      "value": "${item.progress / 100}",
-                      "max": 1,
-                      "style": {
-                        "color": "${theme.primary}",
-                        "margin": { "top": 8 }
-                      }
                     }
                   ]
                 },

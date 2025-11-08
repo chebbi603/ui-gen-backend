@@ -1,5 +1,7 @@
 export type UserDTO = {
   id: string;
+  username?: string;
+  email?: string;
   name: string;
   lastActive: string; // ISO string
   contractVersion: string;

@@ -6,7 +6,8 @@ export function buildSystemPrompt(model: string): string {
     'You are a senior UX optimization expert focused on mobile-first design. ' +
     'Apply Nielsen’s 10 Usability Heuristics: visibility of system status; match between system and the real world; user control and freedom; consistency and standards; error prevention; recognition rather than recall; flexibility and efficiency of use; aesthetic and minimalist design; help users recognize, diagnose, and recover from errors; help and documentation. ' +
     'Optimize interactions, navigation, and forms with minimal cognitive load while preserving semantics. ' +
-    'Always return valid JSON conforming to the supplied schema. ' +
+    'CRITICAL: Always make at least one concrete change to pagesUI (e.g., adjust a label, reorder an item, tweak grid columns, add helper text) — do not return an identical contract. ' +
+    'Respond ONLY with valid, complete JSON for a full contract including version (string), meta, pagesUI (authenticated pages only), and thresholds. ' +
     'Important: Only generate authenticated page sections; exclude public pages.'
   );
 }
@@ -31,10 +32,42 @@ export function buildUserPrompt(
     outputRequirements: {
       format: 'JSON only',
       schema:
-        'Partial contract with meta and pagesUI.pages ONLY (authenticated scope). Exclude public pages and all other sections (services, routes, dataModels, state, themes).',
+        'Full contract JSON including: version (string), meta, pagesUI.pages (authenticated scope only), thresholds (numeric values). Exclude public pages and optional sections unless necessary (services, routes, dataModels, state, theming). Do NOT include explanations outside JSON.',
+      example: {
+        version: '0.1.0',
+        meta: {
+          optimizationExplanation:
+            'Explain key changes made and why (1-3 sentences).',
+          isPartial: false,
+          generatedAt: '<ISO timestamp>',
+        },
+        thresholds: {
+          rageThreshold: 3,
+          rageWindowMs: 1000,
+          repeatThreshold: 3,
+          repeatWindowMs: 2000,
+          formRepeatWindowMs: 10000,
+          formFailWindowMs: 10000,
+        },
+        pagesUI: {
+          pages: {
+            Home: {
+              id: 'Home',
+              title: 'Home',
+              scope: 'authenticated',
+              layout: 'column',
+              children: [
+                { type: 'text', value: 'Welcome', style: { fontSize: 16 } },
+              ],
+            },
+          },
+        },
+      },
       explanationField:
         'Place human-readable reasoning in meta.optimizationExplanation',
       scope: 'authenticated-only',
+      nonTrivialChangeRule:
+        'You MUST change at least one component or property compared to currentContract (e.g., reorder items, modify labels, add helper text, adjust grid size). Return differences, not a verbatim copy.',
     },
   };
   return JSON.stringify(payload);
@@ -57,10 +90,12 @@ export function buildRetryPrompt(
     outputRequirements: {
       format: 'JSON only',
       schema:
-        'Partial contract with meta and pagesUI.pages ONLY (authenticated scope). Exclude public pages and all other sections (services, routes, dataModels, state, themes).',
+        'Full contract JSON including: version (string), meta, pagesUI.pages (authenticated scope only), thresholds (numeric values). Exclude public pages and optional sections unless necessary. Do NOT include explanations outside JSON.',
       explanationField:
         'Place human-readable reasoning in meta.optimizationExplanation',
       scope: 'authenticated-only',
+      nonTrivialChangeRule:
+        'You MUST change at least one component or property compared to currentContract.',
     },
   });
 }

@@ -74,6 +74,44 @@ Swagger: `http://localhost:8081/api`
   - `POST /llm/generate-contract` — generate an optimized contract from a base and record it under target `userId`
   - `POST /gemini/generate-contract` — same flow via Gemini provider
 
+### LLM Generation — Output Details
+- Provider: Gemini (`llm.provider=gemini`).
+- Prompts require a full contract JSON containing:
+  - `meta` — includes `optimizationExplanation`, `generatedAt`, `isPartial=false`; backend stamps `meta.version`.
+  - `pagesUI.pages` — authenticated-only pages; public pages excluded.
+  - `thresholds` — numeric tuning values (e.g., `rageThreshold`, `rageWindowMs`, `repeatThreshold`, `repeatWindowMs`, `formRepeatWindowMs`, `formFailWindowMs`).
+- Backend enforcement:
+  - Sets `responseMimeType: application/json` and a `responseSchema` for the above sections.
+  - If `thresholds` is missing, applies safe defaults.
+  - Validates and persists the resulting JSON; on validation failure, retries once with correction prompt, then falls back to a safe partial.
+- Example success response (simplified):
+  ```json
+  {
+    "version": "1.0.4",
+    "json": {
+      "meta": {
+        "optimizationExplanation": "Reordered Home cards and added helper text to reduce confusion.",
+        "isPartial": false,
+        "generatedAt": "2025-11-05T15:12:00.000Z",
+        "version": "1.0.4"
+      },
+      "thresholds": {
+        "rageThreshold": 3,
+        "rageWindowMs": 1000,
+        "repeatThreshold": 3,
+        "repeatWindowMs": 2000,
+        "formRepeatWindowMs": 10000,
+        "formFailWindowMs": 10000
+      },
+      "pagesUI": {
+        "pages": {
+          "Home": { "id": "Home", "scope": "authenticated", "layout": "column", "children": [] }
+        }
+      }
+    }
+  }
+  ```
+
 Notes
 - Caching keys: `contracts:canonical`, `contracts:user:{id}` with TTL 300s.
 - See `docs/contracts-behavior.md` for end-to-end behavior, storage model, and seeding.
@@ -143,14 +181,23 @@ Notes:
 - `GET /users` (JWT)
   - Returns all users.
   - Response DTO: `UserSummaryDto[]`
+  - Fields:
+    - `id` — string (Mongo `_id`)
+    - `username` — string (optional)
+    - `email` — string (optional)
+    - `name` — string (optional)
+    - `lastActive` — ISO timestamp
+    - `contractVersion` — string (latest version for the user)
 
 - `GET /users/:id` (JWT + ADMIN)
   - Returns a user by id.
 
 - `GET /users/:id/contract` (JWT)
-  - Returns the latest personalized contract for the user; falls back to the latest canonical contract when none exists.
-  - Caching: `Cache-Control: private, max-age=300`; server-side Redis cache key `contracts:user:{id}` when Redis is configured.
+  - Returns the latest personalized contract for the user; if none exists, responds `404 Not Found` so clients can explicitly fall back to the latest canonical via `GET /contracts/public/canonical`.
+  - Caching: `Cache-Control: private, max-age=300`; server-side Redis cache key `contracts:user:{id}` when Redis is configured for successful (200) responses.
   - Response DTO: `ContractDto` (includes `id`, `userId`, `version`, `json`, `createdAt`, `updatedAt`, `meta`).
+  - Rationale: Aligns with Flutter client behavior which falls back to canonical on `404` from `/users/:id/contract`.
+  - Versioning note: when a personalized contract exists, the merged `json.meta.version` is set to the personalized version so clients that read `meta.version` from the inner `json` surface the correct semantic version.
 
 - `POST /users/:id/contract` (JWT + ADMIN)
   - Creates/updates the user’s latest contract.
@@ -325,6 +372,9 @@ Notes:
     { "jobId": "gem-8a74b7d0-9f1e-4e37-b7c0-29b1b060c3bb", "message": "Accepted" }
     ```
   - Circuit breaker: `503` with body `{ "error": { "code": "CIRCUIT_OPEN", "message": "Gemini temporarily disabled" } }`.
+  - **Notes**:
+    - Prompt guardrails enforce non-trivial changes: the optimization prompt requires at least one concrete modification to `pagesUI` compared to the current contract (e.g., tweak labels, reorder items, adjust grid columns, add helper text). This prevents identical output.
+    - Returned JSON is partial and authenticated-only; `meta.optimizationExplanation` contains concise reasoning.
 
 - `GET /gemini/jobs/:jobId` (Public)
   - **Process**: Reads job state from the queue store and returns status, progress, timestamps, and result/error when available.
@@ -336,7 +386,8 @@ Notes:
       "progress": 100,
       "result": {
         "contractId": "651c0f0a1d6d7e6a4e3b1c6d",
-        "version": "1.2.1"
+        "version": "1.2.1",
+        "explanation": "Identified confusion around CTA; replaced with clearer stepper."
       },
       "error": null,
       "timestamps": {
@@ -347,6 +398,8 @@ Notes:
     }
     ```
   - Status values: `queued`, `processing`, `completed`, `failed`.
+  - Notes:
+    - The `result.explanation` is included when the processor returns `meta.optimizationExplanation` during contract persistence. Clients may display this directly without fetching the contract.
 
 - `POST /gemini/circuit-breaker/reset` (Public)
   - **Process**: Forces the circuit breaker to a closed state, allowing new jobs to enqueue.
@@ -401,6 +454,11 @@ Notes:
   - **Notes**:
     - Pain points are returned as `{ title, description, elementId?, page?, severity }`.
     - Improvements are returned as `{ title, description, elementId?, page?, priority }`.
+    - Prompt strengthened for quality:
+      - When events exist (`eventCount > 0`), return at least one pain point and one improvement (never empty arrays).
+      - Deduplicate by `(elementId + page + event type)` and ground all insights strictly in provided events (no invented IDs).
+      - Severity mapping guidelines: rage-click/error/form-abandonment = `high`; long-dwell = `medium`; others default to `medium`.
+      - Items are concise and actionable: short titles and one-sentence descriptions.
     - Invalid LLM output (missing `painPoints` or `improvements` arrays) yields `400 Bad Request`.
     - Model selection uses `llm.gemini.model` from configuration (`GEMINI_MODEL`), defaulting to `gemini-2.5-flash`.
     - Only `userId` is accepted in requests.

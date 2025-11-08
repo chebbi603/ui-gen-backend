@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/mongoose';
 import { LlmJob } from '../../llm/entities/llm-job.entity';
 import { ContractValidationService } from '../../contract/services/contract-validation.service';
+import { CacheService } from '../../../common/services/cache.service';
 
 describe('GeminiGenerationProcessor (unit)', () => {
   let processor: GeminiGenerationProcessor;
@@ -16,6 +17,7 @@ describe('GeminiGenerationProcessor (unit)', () => {
   const mockUserContractService: any = { upsertUserContract: jest.fn() };
   const mockConfig: any = { get: jest.fn().mockReturnValue('unit-model') };
   const mockValidation: any = { validate: jest.fn().mockReturnValue({ isValid: true, errors: [] }) };
+  const mockCache: any = { del: jest.fn().mockResolvedValue(undefined) };
 
   // Mock Mongoose Model constructor and static updateOne
   const mockModelCtor: any = jest.fn().mockImplementation((doc) => ({
@@ -34,6 +36,7 @@ describe('GeminiGenerationProcessor (unit)', () => {
         { provide: UserContractService, useValue: mockUserContractService },
         { provide: ContractValidationService, useValue: mockValidation },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: CacheService, useValue: mockCache },
         { provide: getModelToken(LlmJob.name), useValue: mockModelCtor },
       ],
     }).compile();
@@ -62,7 +65,7 @@ describe('GeminiGenerationProcessor (unit)', () => {
     ...overrides,
   });
 
-  it('process success path updates job, creates contract, and returns ids', async () => {
+  it('process success path updates job, creates contract, and returns ids with explanation', async () => {
     const job = makeJob();
     mockValidation.validate.mockReturnValue({ isValid: true, errors: [] });
     const validJson = { meta: {}, pagesUI: { pages: {} } };
@@ -71,7 +74,7 @@ describe('GeminiGenerationProcessor (unit)', () => {
     mockUserContractService.upsertUserContract.mockResolvedValue({ ok: 1 });
 
     const res = await processor.process(job as any);
-    expect(res).toEqual({ contractId: 'c123', version: '0.1.1' });
+    expect(res).toEqual({ contractId: 'c123', version: '0.1.1', explanation: 'x' });
 
     // Validation invoked on returned JSON
     expect(mockValidation.validate).toHaveBeenCalledWith(validJson);
