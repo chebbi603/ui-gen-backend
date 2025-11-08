@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsObject } from 'class-validator';
 
 export class EnqueueGeminiJobDto {
   @ApiProperty({ description: 'Target user id', example: '64fa0c...', required: true })
@@ -11,6 +11,20 @@ export class EnqueueGeminiJobDto {
   @IsInt()
   @Min(1)
   priority?: number;
+
+  @ApiProperty({ description: 'Optional base contract JSON to guide optimization', required: false, type: 'object' })
+  @IsOptional()
+  @IsObject()
+  baseContract?: Record<string, unknown>;
+
+  @ApiProperty({ description: 'Optional base version to use as starting point', required: false, example: '0.1.0' })
+  @IsOptional()
+  @IsString()
+  version?: string;
+
+  @ApiProperty({ description: 'Optional pain points list (currently ignored server-side)', required: false, isArray: true, type: 'object' })
+  @IsOptional()
+  painPoints?: any[];
 }
 
 export class GeminiJobStatusDto {

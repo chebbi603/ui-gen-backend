@@ -7,6 +7,8 @@ export function buildSystemPrompt(model: string): string {
     'Apply Nielsen’s 10 Usability Heuristics: visibility of system status; match between system and the real world; user control and freedom; consistency and standards; error prevention; recognition rather than recall; flexibility and efficiency of use; aesthetic and minimalist design; help users recognize, diagnose, and recover from errors; help and documentation. ' +
     'Optimize interactions, navigation, and forms with minimal cognitive load while preserving semantics. ' +
     'CRITICAL: Always make at least one concrete change to pagesUI (e.g., adjust a label, reorder an item, tweak grid columns, add helper text) — do not return an identical contract. ' +
+    'STRICTLY FORBIDDEN: (1) Adding new component TYPES or new PROPERTIES not present in currentContract; (2) Creating or modifying PUBLIC pages — only authenticated/private pages are allowed; (3) Introducing unknown schema fields or actions unsupported by the backend/parser. ' +
+    'Allowed modifications ONLY: reorder existing children, resize existing components via existing style properties, highlight existing components, and adjust existing feature ranks. Do not add or remove children, pages, routes, services, state, theming, or actions beyond what exists. ' +
     'Respond ONLY with valid, complete JSON for a full contract including version (string), meta, pagesUI (authenticated pages only), and thresholds. ' +
     'Important: Only generate authenticated page sections; exclude public pages.'
   );
@@ -32,7 +34,19 @@ export function buildUserPrompt(
     outputRequirements: {
       format: 'JSON only',
       schema:
-        'Full contract JSON including: version (string), meta, pagesUI.pages (authenticated scope only), thresholds (numeric values). Exclude public pages and optional sections unless necessary (services, routes, dataModels, state, theming). Do NOT include explanations outside JSON.',
+        'Full contract JSON including ONLY these top-level keys: version (string), meta, pagesUI (authenticated scope only), thresholds (numeric values). Exclude public pages and exclude optional sections (services, routes, dataModels, state, theming, eventsActions). Do NOT include explanations outside JSON.',
+      forbiddenRules: [
+        'Do NOT add new component types',
+        'Do NOT add new properties on any component',
+        'Do NOT include public pages or routes to public pages',
+        'Do NOT include unknown schema fields or unsupported actions',
+      ],
+      allowedChanges: [
+        'Reorder existing children only (no add/remove)',
+        'Resize using existing style keys only (no new style keys)',
+        'Highlight existing components using existing fields only',
+        'Adjust feature ranking using existing fields only',
+      ],
       example: {
         version: '0.1.0',
         meta: {
@@ -56,8 +70,11 @@ export function buildUserPrompt(
               title: 'Home',
               scope: 'authenticated',
               layout: 'column',
+              // Existing children preserved, only ORDER changed and existing STYLE values adjusted.
               children: [
-                { type: 'text', value: 'Welcome', style: { fontSize: 16 } },
+                { type: 'button', label: 'Get Started', style: { width: 120 } },
+                { type: 'text', value: 'Welcome', style: { fontSize: 18 } },
+                // Note: No new component types or properties are introduced; only order/size changed.
               ],
             },
           },
@@ -67,7 +84,7 @@ export function buildUserPrompt(
         'Place human-readable reasoning in meta.optimizationExplanation',
       scope: 'authenticated-only',
       nonTrivialChangeRule:
-        'You MUST change at least one component or property compared to currentContract (e.g., reorder items, modify labels, add helper text, adjust grid size). Return differences, not a verbatim copy.',
+        'You MUST change at least one component or property compared to currentContract (e.g., reorder items, adjust existing style sizes). Return differences, not a verbatim copy.',
     },
   };
   return JSON.stringify(payload);
@@ -90,7 +107,7 @@ export function buildRetryPrompt(
     outputRequirements: {
       format: 'JSON only',
       schema:
-        'Full contract JSON including: version (string), meta, pagesUI.pages (authenticated scope only), thresholds (numeric values). Exclude public pages and optional sections unless necessary. Do NOT include explanations outside JSON.',
+        'Full contract JSON including ONLY: version (string), meta, pagesUI.pages (authenticated scope only), thresholds (numeric values). Exclude public pages and optional sections. Do NOT include explanations outside JSON. Do NOT add new component types/properties.',
       explanationField:
         'Place human-readable reasoning in meta.optimizationExplanation',
       scope: 'authenticated-only',

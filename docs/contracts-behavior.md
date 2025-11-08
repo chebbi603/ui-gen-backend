@@ -54,6 +54,15 @@ Serving Endpoints
   - `POST /llm/generate-contract` — generates an optimized contract, then records it in `Contract` for the target `userId`.
   - `POST /gemini/generate-contract` — same flow using Gemini provider.
 
+LLM Output Sanitization (2025-11-08)
+- Before validation and persistence, the backend sanitizes Gemini output to ensure client compatibility:
+  - Enforces authenticated-only scope; public pages are excluded.
+  - Restricts UI changes to resize, reorder, rank, and highlight on existing components only.
+  - Drops unsupported component types and normalizes known aliases (e.g., `progressBar` → `progressIndicator`, `text_field` → `textField`).
+  - Appends a suppression summary to `meta.optimizationExplanation` describing excluded public pages, removed unsupported components, and normalizations.
+- Schema hardening: Gemini response schema disallows extraneous keys at the top level, in `meta`, and `pagesUI` via `additionalProperties: false`.
+- Validation: sanitized JSON is validated by `ContractValidator`; fallback to prior valid contract occurs when validation fails after retry.
+
 Merging Semantics
 - The merge is performed by `ContractMergeService`, treating canonical as the base and personalized JSON as a partial override.
 - Personalized fields take precedence (e.g., UI layout tweaks, component properties, page definitions). Missing fields fall back to canonical.

@@ -8,6 +8,8 @@ import { ContractPublicController } from './controllers/contract-public.controll
 import { CacheService } from '../../common/services/cache.service';
 import { ConfigModule } from '@nestjs/config';
 import { ContractMergeService } from './services/contract-merge.service';
+import { ContractRepairService } from './services/contract-repair.service';
+import { ContractDiffService } from './services/contract-diff.service';
 import { FlutterContractFilterService } from './services/flutter-contract-filter.service';
 import { ContractBuilderService } from './services/contract-builder.service';
 import { AdminContractController } from './controllers/admin-contract.controller';
@@ -23,6 +25,8 @@ import { AdminContractController } from './controllers/admin-contract.controller
     ContractService,
     ContractValidationService,
     ContractMergeService,
+    ContractRepairService,
+    ContractDiffService,
     CacheService,
     FlutterContractFilterService,
     ContractBuilderService,
@@ -35,6 +39,8 @@ import { AdminContractController } from './controllers/admin-contract.controller
     ContractService,
     ContractValidationService,
     ContractMergeService,
+    ContractRepairService,
+    ContractDiffService,
     FlutterContractFilterService,
     ContractBuilderService,
   ],

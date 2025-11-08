@@ -25,10 +25,11 @@ export class GeminiGenerationProcessor {
     @InjectModel(LlmJob.name) private readonly llmJobModel: Model<LlmJob>,
   ) {}
 
-  async process(job: Job<GeminiGenerationJobData>): Promise<{ contractId?: string; version?: string; explanation?: string }> {
+  async process(job: Job<GeminiGenerationJobData>): Promise<{ contractId?: string; version?: string; explanation?: string; originalSnapshot?: Record<string, any> }> {
     const { userId, baseContract, version } = job.data;
     try {
       const startedAt = new Date();
+      const originalSnapshot = baseContract || (await this.contractService.findLatestByUser(userId))?.json || {};
       const llmJob = new this.llmJobModel({
         jobId: String(job.id),
         userId: new MongooseTypes.ObjectId(userId),
@@ -111,6 +112,7 @@ export class GeminiGenerationProcessor {
         contractId: (contract as any)._id?.toString?.(),
         version: contract.version,
         explanation: (contract as any).meta?.optimizationExplanation,
+        originalSnapshot: originalSnapshot as Record<string, any>,
       };
     } catch (err: any) {
       const msg = err?.message || String(err);

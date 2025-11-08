@@ -74,7 +74,7 @@ describe('GeminiGenerationProcessor (unit)', () => {
     mockUserContractService.upsertUserContract.mockResolvedValue({ ok: 1 });
 
     const res = await processor.process(job as any);
-    expect(res).toEqual({ contractId: 'c123', version: '0.1.1', explanation: 'x' });
+    expect(res).toEqual({ contractId: 'c123', version: '0.1.1', explanation: 'x', originalSnapshot: { a: 1 } });
 
     // Validation invoked on returned JSON
     expect(mockValidation.validate).toHaveBeenCalledWith(validJson);

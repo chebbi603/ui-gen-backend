@@ -57,7 +57,7 @@ export class GeminiController {
     @Body() body: EnqueueGeminiJobDto,
     @Request() req: any,
   ): Promise<EnqueueJobResponseDto> {
-    const { userId, priority } = body as any;
+    const { userId, priority, baseContract, version } = body as any;
     const uid = userId;
     const user = await this.userService.findOne(uid);
     if (!user) {
@@ -73,6 +73,8 @@ export class GeminiController {
       const jobId = await this.queueService.addGeminiGenerationJob({
         userId: uid,
         priority,
+        baseContract,
+        version,
       });
       return { jobId, message: 'Accepted' };
     } catch (err: any) {

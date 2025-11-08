@@ -1,6 +1,74 @@
 Project: nestjs-mongo (NestJS)
 # Jest Test Results
 
+## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — Repair-first + originalSnapshot
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~4.6 s
+- Changes:
+  - Registered `ContractRepairService` and `ContractDiffService` in `ContractModule` and injected them into `GeminiService`.
+  - Implemented a repair-first strategy in `GeminiService.generateOptimizedContract`: sanitize → validate → repair deterministically when invalid → retry once if needed; on success, enforce `meta.isPartial=false` and bump patch version; on failure, raise a validation error (no partial fallback).
+  - Appended a concise diff to `json.meta.optimizationExplanation` via `ContractDiffService.explainChanges(before, after)` alongside sanitization notes.
+  - `GeminiGenerationProcessor` result now includes `originalSnapshot` (base contract when provided, otherwise latest personalized snapshot); success-path spec updated accordingly.
+  - Updated DI in `gemini.service.spec.ts` to provide mocks for `ContractRepairService` and `ContractDiffService`.
+  - Docs updated (`docs/nest-api.md`, `docs/nest-user-journey.md`) to reflect repair-first and `originalSnapshot` in job results.
+- Notes:
+  - Benign queue warnings (`--localstorage-file`) and simulated validation/network messages observed; no impact on assertions.
+
+## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — User journey docs added
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~5.1 s
+- Notes:
+  - Added `docs/nest-user-journey.md` detailing registration → contracts → events → analytics → jobs.
+  - Verified endpoints described (Gemini generation/analysis enqueue + status, aggregate analytics) remain green.
+  - Queue status mapping confirmed (`pending`, `processing`, `completed`, `failed`, `unknown`).
+
+## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — Gemini enqueue accepts baseContract/version
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~5.1 s
+- Change:
+  - `EnqueueGeminiJobDto` now allows optional `baseContract` and `version` (and accepts `painPoints` for future use). This resolves `ValidationPipe` 400 errors caused by `whitelist+forbidNonWhitelisted` rejecting unknown properties.
+  - `GeminiController.enqueueGeneration` propagates `baseContract` and `version` into queue job data; the processor reads them and delegates to `LlmService.generateOptimizedContract`.
+  - `GeminiGenerationJobData` continues to include `baseContract` and `version`; `painPoints` is accepted in the DTO but currently ignored by the processor.
+- Notes:
+  - All suites green; no changes to processor or service specs were required.
+  - This change unblocks React dashboard calls that include `baseContract` in `POST /gemini/generate-contract`.
+
+## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — Signup initializes personalized version 0.0.0
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~5.3 s
+- Change:
+  - `AuthService.signUp` now creates a personalized snapshot for the new user with `version` set to `0.0.0`; `meta.baseVersion` records the canonical version used and `meta.source` is `auto-register`.
+- Notes:
+  - Updated `auth.service.spec.ts` to assert `version='0.0.0'` and `meta.baseVersion='1.0.0'` when a canonical exists.
+  - All suites green; benign `--localstorage-file` warnings in queue specs persist without affecting assertions.
+
+## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — Gemini sanitization + schema hardening
+- Command: `npm test --silent`
+- Test Suites: 20 passed, 20 total
+- Tests: 73 passed, 73 total
+- Snapshots: 0 total
+- Time: ~4.8 s
+- Changes:
+  - Hardened Gemini `responseSchema` with `additionalProperties: false` at top-level, `meta`, and `pagesUI` to reject unknown keys.
+  - Integrated `FlutterContractFilterService` into `GeminiService` to sanitize LLM output before validation and persistence.
+  - Added suppression logging: `meta.optimizationExplanation` now appends a concise summary of sanitized content (excluded public pages, removed unsupported components, normalized types).
+  - Validated sanitized output; retry path also sanitizes before validation.
+- Notes:
+  - Updated `gemini.service.spec.ts` to provide a mock `FlutterContractFilterService`; all suites now green.
+  - Benign warnings about `--localstorage-file` observed in queue specs remain and do not affect assertions.
+
 ## Latest Run Summary — 2025-11-08 (Unit — 73 tests passed) — json.meta.version reflects personalized
 - Command: `npm test --silent`
 - Test Suites: 20 passed, 20 total

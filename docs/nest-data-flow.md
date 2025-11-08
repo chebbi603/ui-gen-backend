@@ -40,6 +40,7 @@ This document clarifies how the Nest backend processes requests, stores and aggr
 - `POST /users/:id/contract` — Create/update personalized contract.
   - `ContractService.create(json, version, meta, requesterId, userId)`.
   - Returns created doc and invalidates `contracts:user:{id}` cache key.
+  - On signup (AuthService): a personalized snapshot is auto-created from the latest canonical with `version` initialized to `0.0.0` and `meta.baseVersion` set to the canonical version used.
 - `GET /users/:id/tracking-events` — List user’s tracking events.
   - Validates `ObjectId` and returns events for the target user, regardless of requester.
   - Maps event docs to DTO (`TrackingEventDTO`).
@@ -72,6 +73,14 @@ This document clarifies how the Nest backend processes requests, stores and aggr
   - Persist raw LLM interaction: store `requestPayload` and `responseText` into `LlmJob` for auditability.
   - Return `{ contractId, version, explanation }` to the queue as `returnvalue`.
 - Errors: Logged, marked failed with retryability flag.
+
+#### LLM Pipeline Updates (2025-11-08)
+- Prompts: Gemini prompts explicitly forbid introducing new component types/properties and public pages.
+- Schema hardening: Response schema requires `version`, `meta`, `pagesUI`, `thresholds` and applies `additionalProperties: false` at the top level, within `meta`, and within `pagesUI`; `thresholds` values must be numeric.
+- Sanitization: Raw LLM JSON is sanitized using `FlutterContractFilterService` to drop unsupported types and normalize aliases (`progressBar` → `progressIndicator`, `text_field` → `textField`).
+- Scope enforcement: Only authenticated pages are retained; public pages are suppressed during generation.
+- Suppression log: Differences between raw output and sanitized JSON are summarized and prepended to `meta.optimizationExplanation` (includes excluded pages, removed components, and normalizations).
+- Validation & fallback: Sanitized JSON is validated; on failure (after retry), the system falls back to the last valid contract with authenticated-only pages, default thresholds, and a bumped patch version.
 
 ### analyze-events.processor
 

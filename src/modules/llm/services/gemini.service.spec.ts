@@ -6,6 +6,9 @@ import { EventService } from '../../event/services/event.service';
 import { SessionService } from '../../session/services/session.service';
 import { GeminiClient } from '../clients/gemini.client';
 import { CacheService } from '../../../common/services/cache.service';
+import { FlutterContractFilterService } from '../../contract/services/flutter-contract-filter.service';
+import { ContractRepairService } from '../../contract/services/contract-repair.service';
+import { ContractDiffService } from '../../contract/services/contract-diff.service';
 
 describe('GeminiService (circuit breaker)', () => {
   let service: GeminiService;
@@ -16,6 +19,9 @@ describe('GeminiService (circuit breaker)', () => {
   const mockSession: any = {};
   const mockClient: any = { isEnabled: jest.fn().mockReturnValue(true) };
   const mockCache: any = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+  const mockFlutterFilter: any = { filterForFlutter: jest.fn((x) => x) };
+  const mockRepair: any = { repair: jest.fn((json) => json) };
+  const mockDiff: any = { explainChanges: jest.fn(() => 'diff') };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -28,6 +34,9 @@ describe('GeminiService (circuit breaker)', () => {
         { provide: SessionService, useValue: mockSession },
         { provide: GeminiClient, useValue: mockClient },
         { provide: CacheService, useValue: mockCache },
+        { provide: FlutterContractFilterService, useValue: mockFlutterFilter },
+        { provide: ContractRepairService, useValue: mockRepair },
+        { provide: ContractDiffService, useValue: mockDiff },
       ],
     }).compile();
 

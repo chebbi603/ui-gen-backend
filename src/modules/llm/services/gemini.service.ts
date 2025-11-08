@@ -6,6 +6,9 @@ import { SessionService } from '../../session/services/session.service';
 import { GeminiClient } from '../clients/gemini.client';
 import { validateContractJson } from '../../../common/validators/contract.validator';
 import { CacheService } from '../../../common/services/cache.service';
+import { FlutterContractFilterService } from '../../contract/services/flutter-contract-filter.service';
+import { ContractRepairService } from '../../contract/services/contract-repair.service';
+import { ContractDiffService } from '../../contract/services/contract-diff.service';
 import {
   AggregationSummary,
   AnalyticsSummary,
@@ -44,6 +47,9 @@ export class GeminiService {
     private readonly sessionService: SessionService,
     private readonly gemini: GeminiClient,
     private readonly cache: CacheService,
+    private readonly flutterFilter: FlutterContractFilterService,
+    private readonly repair: ContractRepairService,
+    private readonly diff: ContractDiffService,
   ) {}
 
   isCircuitOpen(): boolean {
@@ -142,6 +148,15 @@ export class GeminiService {
         current as Record<string, any>,
       );
 
+      // Sanitize for frontend compatibility and collect suppression notes
+      const sanitizedInitial = this.flutterFilter.filterForFlutter(fullJson);
+      const suppressionNotesInitial = this.collectSuppressionLog(
+        fullJson,
+        sanitizedInitial,
+        authPages,
+        parsed,
+      );
+
       // Pre-stamp version before validation to enforce completeness
       const currentVersion =
         params.version ||
@@ -152,8 +167,49 @@ export class GeminiService {
         ...((fullJson as any)?.meta || {}),
         version: currentVersion,
       };
-      const validation = validateContractJson(fullJson);
+      // Prepend sanitization notes into optimizationExplanation (do not lose LLM notes)
+      (sanitizedInitial as any).meta = {
+        ...((sanitizedInitial as any)?.meta || {}),
+        optimizationExplanation: [
+          ((sanitizedInitial as any)?.meta?.optimizationExplanation || ''),
+          suppressionNotesInitial.length > 0
+            ? `Sanitization: ${suppressionNotesInitial.join('; ')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' — '),
+      };
+
+      const validation = validateContractJson(sanitizedInitial);
       if (!validation.valid) {
+        // Attempt deterministic repair before retrying the LLM
+        const repairedInitial = this.repair.repair(
+          sanitizedInitial as any,
+          { base: current as Record<string, any> },
+        );
+        const repairedValidation = validateContractJson(repairedInitial);
+        if (repairedValidation.valid) {
+          this.recordSuccess();
+          const nextVersion = this.bumpPatch(currentVersion);
+          (repairedInitial as any).version = nextVersion;
+          (repairedInitial as any).meta = {
+            ...((repairedInitial as any)?.meta || {}),
+            version: nextVersion,
+            isPartial: false,
+            optimizationExplanation: [
+              ((repairedInitial as any)?.meta?.optimizationExplanation || ''),
+              this.diff.explainChanges(current as any, repairedInitial as any),
+            ]
+              .filter(Boolean)
+              .join(' — '),
+          };
+          return {
+            version: nextVersion,
+            json: repairedInitial,
+            llmDebug: { userPrompt, systemPrompt, rawResponse: text, request },
+          };
+        }
+
         const { text: retryText, request: retryReq } = await this.callGeminiContractWithDebug(
           buildRetryPrompt(
             current as Record<string, any>,
@@ -169,41 +225,181 @@ export class GeminiService {
           authPages,
           current as Record<string, any>,
         );
+        // Sanitize retried output and collect suppression notes
+        const sanitizedRetry = this.flutterFilter.filterForFlutter(retriedPartial);
+        const suppressionNotesRetry = this.collectSuppressionLog(
+          retriedPartial,
+          sanitizedRetry,
+          authPages,
+          retried,
+        );
         (retriedPartial as any).version = currentVersion;
-        (retriedPartial as any).meta = {
-          ...((retriedPartial as any)?.meta || {}),
+        (sanitizedRetry as any).meta = {
+          ...((sanitizedRetry as any)?.meta || {}),
           version: currentVersion,
+          optimizationExplanation: [
+            ((sanitizedRetry as any)?.meta?.optimizationExplanation || ''),
+            suppressionNotesRetry.length > 0
+              ? `Sanitization: ${suppressionNotesRetry.join('; ')}`
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' — '),
         };
-        const retryValidation = validateContractJson(retriedPartial);
+        // Attempt deterministic repair on retried output
+        const repairedRetry = this.repair.repair(sanitizedRetry as any, { base: current as Record<string, any> });
+        const retryValidation = validateContractJson(repairedRetry);
         if (!retryValidation.valid) {
-          this.recordFailure();
-          return this.fallbackSafe(current as Record<string, any>, params);
+          // As a last resort, force a minimal valid structure based on base contract
+          const forced = this.repair.repair(retriedPartial as any, { base: current as Record<string, any> });
+          const forcedValidation = validateContractJson(forced);
+          if (!forcedValidation.valid) {
+            this.recordFailure();
+            // Do not fall back to partial; surface the validation error
+            const msg = forcedValidation.errors?.map?.((e: any) => `${e.path}: ${e.message}`).join('; ') || 'unknown';
+            throw new Error(`Validation error after repair: ${msg}`);
+          }
+          this.recordSuccess();
+          const nextVersion = this.bumpPatch(currentVersion);
+          (forced as any).version = nextVersion;
+          (forced as any).meta = {
+            ...((forced as any)?.meta || {}),
+            version: nextVersion,
+            isPartial: false,
+            optimizationExplanation: [
+              ((forced as any)?.meta?.optimizationExplanation || ''),
+              this.diff.explainChanges(current as any, forced as any),
+            ]
+              .filter(Boolean)
+              .join(' — '),
+          };
+          return { version: nextVersion, json: forced, llmDebug: { userPrompt, systemPrompt, rawResponse: retryText, request: retryReq } };
         }
         this.recordSuccess();
         const nextVersion = this.bumpPatch(currentVersion);
         // Finalize version in both top-level and meta
-        (retriedPartial as any).version = nextVersion;
-        (retriedPartial as any).meta = {
-          ...((retriedPartial as any)?.meta || {}),
+        (repairedRetry as any).version = nextVersion;
+        (repairedRetry as any).meta = {
+          ...((repairedRetry as any)?.meta || {}),
           version: nextVersion,
+          isPartial: false,
+          optimizationExplanation: [
+            ((repairedRetry as any)?.meta?.optimizationExplanation || ''),
+            this.diff.explainChanges(current as any, repairedRetry as any),
+          ]
+            .filter(Boolean)
+            .join(' — '),
         };
-        return { version: nextVersion, json: retriedPartial, llmDebug: { userPrompt, systemPrompt, rawResponse: retryText, request: retryReq } };
+        return { version: nextVersion, json: repairedRetry, llmDebug: { userPrompt, systemPrompt, rawResponse: retryText, request: retryReq } };
       }
 
       this.recordSuccess();
       const nextVersion = this.bumpPatch(currentVersion);
       // Finalize version in both top-level and meta
-      (fullJson as any).version = nextVersion;
-      (fullJson as any).meta = {
-        ...((fullJson as any)?.meta || {}),
+      (sanitizedInitial as any).version = nextVersion;
+      (sanitizedInitial as any).meta = {
+        ...((sanitizedInitial as any)?.meta || {}),
         version: nextVersion,
+        isPartial: false,
+        optimizationExplanation: [
+          ((sanitizedInitial as any)?.meta?.optimizationExplanation || ''),
+          this.diff.explainChanges(current as any, sanitizedInitial as any),
+        ]
+          .filter(Boolean)
+          .join(' — '),
       };
-      return { version: nextVersion, json: fullJson, llmDebug: { userPrompt, systemPrompt, rawResponse: text, request } };
+      return { version: nextVersion, json: sanitizedInitial, llmDebug: { userPrompt, systemPrompt, rawResponse: text, request } };
     } catch (err: any) {
       this.logger.error(`Gemini generation failed: ${err?.message || err}`);
       this.recordFailure();
       throw err;
     }
+  }
+
+  // Compare pre/post-sanitization to generate a concise suppression log
+  private collectSuppressionLog(
+    before: Record<string, any>,
+    after: Record<string, any>,
+    authPages: Set<string>,
+    llmOut?: Record<string, any>,
+  ): string[] {
+    const notes: string[] = [];
+    try {
+      const outPages = (llmOut as any)?.pagesUI?.pages || {};
+      const beforePages = (before as any)?.pagesUI?.pages || {};
+      const afterPages = (after as any)?.pagesUI?.pages || {};
+
+      // Note: suppressed public pages attempted by LLM
+      const attemptedPageNames = Object.keys(outPages || {});
+      const includedNames = new Set(Object.keys(afterPages || {}));
+      const suppressedPublic = attemptedPageNames.filter(
+        (n) => !includedNames.has(n) && !authPages.has(n),
+      );
+      if (suppressedPublic.length > 0) {
+        notes.push(
+          `excluded public pages [${suppressedPublic.join(', ')}] (authenticated-only policy)`,
+        );
+      }
+
+      // Component-level removals per page
+      const typeCounts = (root: any): Record<string, number> => {
+        const counts: Record<string, number> = {};
+        const walk = (node: any) => {
+          if (!node || typeof node !== 'object') return;
+          const t = node.type ? String(node.type) : null;
+          if (t) counts[t] = (counts[t] || 0) + 1;
+          const children = node.children;
+          if (Array.isArray(children)) children.forEach((c) => walk(c));
+          // handle list/grid itemBuilder/itemTemplate
+          if (node.itemBuilder && typeof node.itemBuilder === 'object') {
+            walk(node.itemBuilder);
+          }
+        };
+        // pages may be objects with children/layout; walk their children
+        if (root && typeof root === 'object') {
+          const children = root.children;
+          if (Array.isArray(children)) children.forEach((c: any) => walk(c));
+        }
+        return counts;
+      };
+
+      for (const name of Object.keys(beforePages || {})) {
+        const b = beforePages[name];
+        const a = afterPages[name];
+        if (!a) {
+          // Page fully removed by sanitization (unlikely due to auth filter)
+          notes.push(`page '${name}' dropped during sanitization`);
+          continue;
+        }
+        const bCounts = typeCounts(b);
+        const aCounts = typeCounts(a);
+        // Removed components heuristic
+        const removedTypes: string[] = [];
+        for (const [t, n] of Object.entries(bCounts)) {
+          const afterN = aCounts[t] || 0;
+          if (afterN < n) removedTypes.push(`${t}(-${n - afterN})`);
+        }
+        if (removedTypes.length > 0) {
+          notes.push(
+            `page '${name}': removed unsupported components ${removedTypes.join(', ')}`,
+          );
+        }
+        // Normalization hints
+        if ((bCounts['progressBar'] || 0) > 0 && (aCounts['progressIndicator'] || 0) > 0) {
+          notes.push(
+            `page '${name}': normalized progressBar→progressIndicator (${aCounts['progressIndicator']})`,
+          );
+        }
+        if ((bCounts['text_field'] || 0) > 0 && (aCounts['textField'] || 0) > 0) {
+          notes.push(
+            `page '${name}': normalized text_field→textField (${aCounts['textField']})`,
+          );
+        }
+      }
+    } catch (e) {
+      // non-fatal; continue
+    }
+    return notes;
   }
 
 
@@ -301,10 +497,12 @@ export class GeminiService {
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'object',
+          additionalProperties: false,
           properties: {
             version: { type: 'string' },
             meta: {
               type: 'object',
+              additionalProperties: false,
               properties: {
                 optimizationExplanation: { type: 'string' },
                 isPartial: { type: 'boolean' },
@@ -315,6 +513,7 @@ export class GeminiService {
             },
             pagesUI: {
               type: 'object',
+              additionalProperties: false,
               properties: {
                 pages: { type: 'object' },
               },

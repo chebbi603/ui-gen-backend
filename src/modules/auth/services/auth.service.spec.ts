@@ -122,8 +122,8 @@ describe('AuthService (unit)', () => {
       expect(mockUserService.create).toHaveBeenCalledWith(dto);
       expect(mockContract.create).toHaveBeenCalledWith(
         expect.any(Object),
-        '1.0.0',
-        expect.objectContaining({ source: 'auto-register' }),
+        '0.0.0',
+        expect.objectContaining({ source: 'auto-register', baseVersion: '1.0.0' }),
         'u1',
         'u1',
       );

@@ -84,6 +84,13 @@ Swagger: `http://localhost:8081/api`
   - Sets `responseMimeType: application/json` and a `responseSchema` for the above sections.
   - If `thresholds` is missing, applies safe defaults.
   - Validates and persists the resulting JSON; on validation failure, retries once with correction prompt, then falls back to a safe partial.
+
+#### Sanitization & Schema (2025-11-08)
+- Constraints: Gemini is instructed to avoid introducing new component types/properties and must exclude public pages.
+- Schema: Response schema requires `version`, `meta`, `pagesUI`, and `thresholds`. `additionalProperties: false` is applied at the top level, within `meta`, and within `pagesUI`; `thresholds` values must be numeric.
+- Sanitization: The backend uses `FlutterContractFilterService` to drop unsupported components and normalize aliases (e.g., `progressBar` → `progressIndicator`, `text_field` → `textField`).
+- Suppression summary: The backend prepends a note to `json.meta.optimizationExplanation` describing excluded public pages, removed/normalized components, and other suppressions.
+- Validation & repair: Sanitized JSON is validated. If invalid, the backend applies a deterministic repair via `ContractRepairService` using the base/current contract as a guide. When repair succeeds, it bumps the patch version and enforces `meta.isPartial=false`. If repair fails, the system retries once with a correction prompt; if still invalid, it raises a validation error (no partial fallback).
 - Example success response (simplified):
   ```json
   {
@@ -129,7 +136,10 @@ Notes
   - Registers a new user.
   - Body: `{ "email": "user@example.com", "username": "user", "name": "User", "password": "secret123" }`
   - Response: `{ "ok": true }`
-  - Behavior: on success, the backend automatically assigns the latest canonical contract to the new user by creating a personalized snapshot seeded from the canonical. If no canonical exists, registration succeeds without creating a personalized contract.
+  - Behavior: on success, the backend automatically assigns the latest canonical contract to the new user by creating a personalized snapshot seeded from the canonical.
+    - Initial version: the personalized snapshot is created with `version` set to `0.0.0`.
+    - Provenance: `meta.baseVersion` records the canonical version used; `meta.source` is `auto-register`.
+    - If no canonical exists, registration succeeds without creating a personalized contract.
 
 - `POST /auth/login`
   - Logs in and returns JWT.
@@ -365,7 +375,15 @@ Notes:
   - **Process**: Validates input and checks the Gemini circuit breaker state. If closed, enqueues a generation job in the queue and returns `202 Accepted` with the job ID. The processor will compute analytics (with Redis cache for `llm:analytics:{userId}`), call Gemini, persist the contract, and attach generation metadata. If the circuit is open (e.g., due to repeated failures), responds with `503 Service Unavailable`.
   - **Request Payload** (`EnqueueGeminiJobDto`):
     ```json
-    { "userId": "64f5b7e86831d4f215d7b8d4", "priority": 5 }
+    {
+      "userId": "64f5b7e86831d4f215d7b8d4",
+      "priority": 5,
+      "baseContract": {
+        "meta": { "description": "Base contract to optimize." },
+        "pagesUI": { "pages": {} }
+      },
+      "version": "1.0.4"
+    }
     ```
   - **Response** (`EnqueueJobResponseDto`):
     ```json
@@ -373,8 +391,12 @@ Notes:
     ```
   - Circuit breaker: `503` with body `{ "error": { "code": "CIRCUIT_OPEN", "message": "Gemini temporarily disabled" } }`.
   - **Notes**:
+    - Optional fields:
+      - `baseContract` — when provided, the processor uses it as the starting point for authenticated pages. When omitted, it falls back to the user’s latest personalized contract (if any).
+      - `version` — when provided, seeds `json.version` and `json.meta.version` before validation. When omitted, it falls back to the user’s latest personalized version (or a default like `0.1.0`).
+      - `painPoints` — accepted by the DTO for future use, currently ignored by the processor.
     - Prompt guardrails enforce non-trivial changes: the optimization prompt requires at least one concrete modification to `pagesUI` compared to the current contract (e.g., tweak labels, reorder items, adjust grid columns, add helper text). This prevents identical output.
-    - Returned JSON is partial and authenticated-only; `meta.optimizationExplanation` contains concise reasoning.
+    - Returned JSON is authenticated-only and validated; backend enforces `meta.isPartial=false` using a repair-first strategy. `meta.optimizationExplanation` includes a sanitization summary and a concise diff of changes compared to the original snapshot.
 
 - `GET /gemini/jobs/:jobId` (Public)
   - **Process**: Reads job state from the queue store and returns status, progress, timestamps, and result/error when available.
@@ -387,7 +409,8 @@ Notes:
       "result": {
         "contractId": "651c0f0a1d6d7e6a4e3b1c6d",
         "version": "1.2.1",
-        "explanation": "Identified confusion around CTA; replaced with clearer stepper."
+        "explanation": "Identified confusion around CTA; replaced with clearer stepper.",
+        "originalSnapshot": { "meta": { "description": "Base contract to optimize." }, "pagesUI": { "pages": {} } }
       },
       "error": null,
       "timestamps": {
@@ -400,6 +423,7 @@ Notes:
   - Status values: `queued`, `processing`, `completed`, `failed`.
   - Notes:
     - The `result.explanation` is included when the processor returns `meta.optimizationExplanation` during contract persistence. Clients may display this directly without fetching the contract.
+    - The `result.originalSnapshot` contains the starting contract used for optimization: either the provided `baseContract` or the latest personalized contract for the user when `baseContract` is omitted.
 
 - `POST /gemini/circuit-breaker/reset` (Public)
   - **Process**: Forces the circuit breaker to a closed state, allowing new jobs to enqueue.

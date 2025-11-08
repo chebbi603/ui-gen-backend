@@ -75,8 +75,13 @@ export class AuthService {
     try {
       await this.contractService.create(
         (canonical as any).json,
-        (canonical as any).version,
-        { ...(canonical as any).meta, source: 'auto-register', assignedAt: new Date().toISOString() },
+        '0.0.0',
+        {
+          ...(canonical as any).meta,
+          source: 'auto-register',
+          baseVersion: (canonical as any).version,
+          assignedAt: new Date().toISOString(),
+        },
         (created as any)._id?.toString?.() ?? '',
         (created as any)._id?.toString?.() ?? '',
       );

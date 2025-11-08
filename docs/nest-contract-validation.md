@@ -142,3 +142,14 @@ Returns errors:
 - Default behavior: missing `type` is treated as `string` by clients; this can corrupt object fields.
 - Use `type: "object"` for map-like fields (e.g., `user` modeled on `User`).
 - Canonical contract updated: `state.global.user` includes `type: "object"` to align with client casting and validation.
+
+## LLM Schema Hardening & Sanitization (2025-11-08)
+
+- Hardening: Gemini response schema now requires `version`, `meta`, `pagesUI`, and `thresholds`. `additionalProperties: false` is applied at the top level, within `meta`, and within `pagesUI`. `thresholds` is an object whose values must be numeric.
+- Sanitization: After parsing, the backend uses `FlutterContractFilterService` to:
+  - Drop unsupported component types and normalize known aliases (e.g., `progressBar` → `progressIndicator`, `text_field` → `textField`).
+  - Enforce authenticated-only scope by excluding public pages.
+  - Restrict UI changes to resize, reorder, rank, and highlight on existing components only.
+- Suppression log: Differences between raw LLM output and sanitized JSON are summarized and prepended to `meta.optimizationExplanation` for traceability (notes include excluded public pages, removed components, and normalizations).
+- Validation flow: Sanitized JSON is validated by `ContractValidationService`. If validation fails after a retry, the system falls back to the previously valid contract using authenticated-only pages and default thresholds, bumps the patch version, and sets `meta.optimizationExplanation` to indicate fallback.
+- Implementation: See `src/modules/llm/services/gemini.service.ts` (schema hardening, sanitization, fallback) and `src/modules/contract/services/flutter-contract-filter.service.ts` (component filtering and normalization).
